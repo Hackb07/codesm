@@ -69,6 +69,9 @@ class ModalListItem(Static):
         self._selected = selected
         self.set_class(selected, "-selected")
 
+    def on_click(self):
+        self.screen.dismiss(self.item_id)
+
 
 class ModelSelectModal(ModalScreen):
     """Modal for selecting a model"""
@@ -76,6 +79,7 @@ class ModelSelectModal(ModalScreen):
     CSS = """
     ModelSelectModal {
         align: center middle;
+        background: rgba(0, 0, 0, 0.5);
     }
 
     #modal-container {
@@ -154,6 +158,7 @@ class ModelSelectModal(ModalScreen):
         Binding("up", "move_up", "Up", show=False),
         Binding("down", "move_down", "Down", show=False),
         Binding("enter", "select", "Select", show=False),
+        Binding("ctrl+a", "connect_provider", "Connect Provider", show=False),
     ]
 
     def __init__(self, current_model: str = ""):
@@ -211,6 +216,10 @@ class ModelSelectModal(ModalScreen):
             self.search_query = event.value
             self._build_list(event.value)
 
+    def on_input_submitted(self, event: Input.Submitted):
+        if event.input.id == "search-input":
+            self.action_select()
+
     def action_move_up(self):
         if not self.visible_items:
             return
@@ -235,6 +244,15 @@ class ModelSelectModal(ModalScreen):
     def action_dismiss(self):
         self.dismiss(None)
 
+    def action_connect_provider(self):
+        self.dismiss("__connect_provider__")
+
+    def on_key(self, event: events.Key):
+        if event.key == "ctrl+a":
+            event.prevent_default()
+            event.stop()
+            self.action_connect_provider()
+
 
 class ProviderConnectModal(ModalScreen):
     """Modal for connecting a provider"""
@@ -242,6 +260,7 @@ class ProviderConnectModal(ModalScreen):
     CSS = """
     ProviderConnectModal {
         align: center middle;
+        background: rgba(0, 0, 0, 0.5);
     }
 
     #modal-container {
@@ -363,6 +382,10 @@ class ProviderConnectModal(ModalScreen):
             self.search_query = event.value
             self._build_list(event.value)
 
+    def on_input_submitted(self, event: Input.Submitted):
+        if event.input.id == "search-input":
+            self.action_select()
+
     def action_move_up(self):
         if not self.visible_items:
             return
@@ -385,4 +408,414 @@ class ProviderConnectModal(ModalScreen):
             self.dismiss(selected.item_id)
 
     def action_dismiss(self):
+        self.dismiss(None)
+
+
+class ClickableURL(Static):
+    """A clickable URL that copies to clipboard when clicked"""
+
+    DEFAULT_CSS = """
+    ClickableURL {
+        padding: 1;
+        background: $panel;
+        color: #e5a07b;
+        margin: 1 0;
+    }
+
+    ClickableURL:hover {
+        background: $primary;
+    }
+    """
+
+    def __init__(self, url: str, **kwargs):
+        super().__init__(url, **kwargs)
+        self.url = url
+
+    def on_click(self):
+        self._copy_to_clipboard()
+
+    def _copy_to_clipboard(self):
+        try:
+            import subprocess
+            process = subprocess.Popen(
+                ['xclip', '-selection', 'clipboard'],
+                stdin=subprocess.PIPE,
+                stderr=subprocess.DEVNULL
+            )
+            process.communicate(self.url.encode())
+            self.app.notify("URL copied to clipboard!")
+        except FileNotFoundError:
+            try:
+                import subprocess
+                process = subprocess.Popen(
+                    ['xsel', '--clipboard', '--input'],
+                    stdin=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL
+                )
+                process.communicate(self.url.encode())
+                self.app.notify("URL copied to clipboard!")
+            except FileNotFoundError:
+                try:
+                    import subprocess
+                    process = subprocess.Popen(
+                        ['pbcopy'],
+                        stdin=subprocess.PIPE,
+                        stderr=subprocess.DEVNULL
+                    )
+                    process.communicate(self.url.encode())
+                    self.app.notify("URL copied to clipboard!")
+                except FileNotFoundError:
+                    self.app.notify("Could not copy - install xclip or xsel")
+
+
+ANTHROPIC_AUTH_METHODS = [
+    {"id": "manual-api-key", "name": "Enter API Key", "hint": "Recommended"},
+    {"id": "create-api-key", "name": "Create API Key in Browser", "hint": "Opens console.anthropic.com"},
+]
+
+
+class AuthMethodModal(ModalScreen):
+    """Modal for selecting authentication method"""
+
+    CSS = """
+    AuthMethodModal {
+        align: center middle;
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    #modal-container {
+        width: 60;
+        height: auto;
+        max-height: 80%;
+        background: $surface;
+        border: tall $primary;
+        padding: 1 2;
+    }
+
+    #modal-header {
+        height: 3;
+        width: 100%;
+    }
+
+    #modal-title {
+        text-style: bold;
+    }
+
+    #esc-hint {
+        dock: right;
+        color: $text-muted;
+    }
+
+    #search-input {
+        margin: 1 0;
+        border: tall $primary;
+        background: $panel;
+    }
+
+    #search-input:focus {
+        border: tall $accent;
+    }
+
+    #method-list {
+        height: auto;
+        max-height: 10;
+        padding: 0;
+    }
+
+    ModalListItem {
+        height: 1;
+        padding: 0;
+    }
+
+    ModalListItem.-selected {
+        background: #e5a07b;
+        color: #1e1e2e;
+    }
+
+    ModalListItem.-selected .item-content {
+        color: #1e1e2e;
+        text-style: bold;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "dismiss_modal", "Close", show=False),
+        Binding("up", "move_up", "Up", show=False),
+        Binding("down", "move_down", "Down", show=False),
+        Binding("enter", "select", "Select", show=False),
+    ]
+
+    def __init__(self, provider: str = "anthropic"):
+        super().__init__()
+        self.provider = provider
+        self.selected_index = 0
+        self.visible_items: list[ModalListItem] = []
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="modal-container"):
+            with Horizontal(id="modal-header"):
+                yield Static("Select auth method", id="modal-title")
+                yield Static("esc", id="esc-hint")
+            yield Input(placeholder="Search", id="search-input")
+            yield VerticalScroll(id="method-list")
+
+    def on_mount(self):
+        self._build_list()
+        self.query_one("#search-input", Input).focus()
+
+    def _build_list(self, filter_text: str = ""):
+        container = self.query_one("#method-list", VerticalScroll)
+        container.remove_children()
+        self.visible_items = []
+
+        filter_lower = filter_text.lower()
+
+        methods = ANTHROPIC_AUTH_METHODS
+        filtered = [
+            m for m in methods
+            if filter_lower in m["name"].lower()
+        ] if filter_text else methods
+
+        for method in filtered:
+            item = ModalListItem(method["id"], method["name"], method.get("hint", ""))
+            container.mount(item)
+            self.visible_items.append(item)
+
+        if self.visible_items:
+            self.selected_index = 0
+            self.visible_items[0].set_selected(True)
+
+    def on_input_changed(self, event: Input.Changed):
+        if event.input.id == "search-input":
+            self._build_list(event.value)
+
+    def on_input_submitted(self, event: Input.Submitted):
+        if event.input.id == "search-input":
+            self.action_select()
+
+    def action_move_up(self):
+        if not self.visible_items:
+            return
+        self.visible_items[self.selected_index].set_selected(False)
+        self.selected_index = (self.selected_index - 1) % len(self.visible_items)
+        self.visible_items[self.selected_index].set_selected(True)
+
+    def action_move_down(self):
+        if not self.visible_items:
+            return
+        self.visible_items[self.selected_index].set_selected(False)
+        self.selected_index = (self.selected_index + 1) % len(self.visible_items)
+        self.visible_items[self.selected_index].set_selected(True)
+
+    def action_select(self):
+        if self.visible_items:
+            selected = self.visible_items[self.selected_index]
+            self.dismiss(selected.item_id)
+
+    def action_dismiss_modal(self):
+        self.dismiss(None)
+
+
+class ClaudeOAuthModal(ModalScreen):
+    """Modal for Claude Pro/Max OAuth authentication"""
+
+    CSS = """
+    ClaudeOAuthModal {
+        align: center middle;
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    #modal-container {
+        width: 70;
+        height: auto;
+        background: $surface;
+        border: tall $primary;
+        padding: 1 2;
+    }
+
+    #modal-header {
+        height: 3;
+        width: 100%;
+    }
+
+    #modal-title {
+        text-style: bold;
+        color: #e5a07b;
+    }
+
+    #esc-hint {
+        dock: right;
+        color: $text-muted;
+    }
+
+    #instructions {
+        padding: 1 0;
+        color: $text-muted;
+    }
+
+    #oauth-url {
+        padding: 1;
+        background: $panel;
+        color: #e5a07b;
+        margin: 1 0;
+    }
+
+    #code-input {
+        margin: 1 0;
+        border: tall $primary;
+        background: $panel;
+    }
+
+    #code-input:focus {
+        border: tall $accent;
+    }
+
+    #footer-hint {
+        padding: 1 0;
+        color: $text-muted;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "dismiss_modal", "Close", show=False),
+    ]
+
+    def __init__(self):
+        super().__init__()
+        self._generate_oauth_url()
+
+    def _generate_oauth_url(self):
+        import secrets
+        import hashlib
+        import base64
+
+        # In opencode, state = code_verifier (they use the same value)
+        self.code_verifier = secrets.token_urlsafe(43)  # ~32 bytes = 43 chars in base64url
+        self.state = self.code_verifier  # Use same value like opencode does
+
+        code_challenge_bytes = hashlib.sha256(self.code_verifier.encode()).digest()
+        self.code_challenge = base64.urlsafe_b64encode(code_challenge_bytes).rstrip(b'=').decode()
+
+        self.client_id = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+        self.redirect_uri = "https://console.anthropic.com/oauth/code/callback"
+
+        # Use console.anthropic.com to get a token that can create API keys
+        # (claude.ai tokens are restricted to whitelisted apps like Claude Code)
+        self.oauth_url = (
+            f"https://console.anthropic.com/oauth/authorize?"
+            f"code=true&client_id={self.client_id}&"
+            f"response_type=code&"
+            f"redirect_uri={self.redirect_uri}&"
+            f"scope=org:create_api_key+user:profile+user:inference&"
+            f"code_challenge={self.code_challenge}&"
+            f"code_challenge_method=S256&"
+            f"state={self.state}"
+        )
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="modal-container"):
+            with Horizontal(id="modal-header"):
+                yield Static("Connect Anthropic", id="modal-title")
+                yield Static("esc", id="esc-hint")
+            yield Static("Click the URL to copy, then paste in your browser:", id="instructions")
+            yield ClickableURL(self.oauth_url, id="oauth-url")
+            yield Input(placeholder="Paste authorization code here", id="code-input")
+            yield Static("[bold]enter[/] submit  [bold]click URL[/] to copy", id="footer-hint")
+
+    def on_mount(self):
+        self.query_one("#code-input", Input).focus()
+
+    async def on_input_submitted(self, event: Input.Submitted):
+        if event.input.id == "code-input":
+            code = event.value.strip()
+            if code:
+                self.dismiss({
+                    "code": code,
+                    "state": self.state,
+                    "code_verifier": self.code_verifier,
+                })
+
+    def action_dismiss_modal(self):
+        self.dismiss(None)
+
+
+class APIKeyInputModal(ModalScreen):
+    """Modal for manually entering API key"""
+
+    CSS = """
+    APIKeyInputModal {
+        align: center middle;
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    #modal-container {
+        width: 70;
+        height: auto;
+        background: $surface;
+        border: tall $primary;
+        padding: 1 2;
+    }
+
+    #modal-header {
+        height: 3;
+        width: 100%;
+    }
+
+    #modal-title {
+        text-style: bold;
+    }
+
+    #esc-hint {
+        dock: right;
+        color: $text-muted;
+    }
+
+    #instructions {
+        padding: 1 0;
+        color: $text-muted;
+    }
+
+    #api-key-input {
+        margin: 1 0;
+        border: tall $primary;
+        background: $panel;
+    }
+
+    #api-key-input:focus {
+        border: tall $accent;
+    }
+
+    #footer-hint {
+        padding: 1 0;
+        color: $text-muted;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "dismiss_modal", "Close", show=False),
+    ]
+
+    def __init__(self, provider: str = "anthropic"):
+        super().__init__()
+        self.provider = provider
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="modal-container"):
+            with Horizontal(id="modal-header"):
+                yield Static(f"Enter {self.provider.title()} API Key", id="modal-title")
+                yield Static("esc", id="esc-hint")
+            yield Static("Paste your API key below:", id="instructions")
+            yield Input(placeholder="sk-ant-...", id="api-key-input", password=True)
+            yield Static("[bold]enter[/] submit", id="footer-hint")
+
+    def on_mount(self):
+        self.query_one("#api-key-input", Input).focus()
+
+    async def on_input_submitted(self, event: Input.Submitted):
+        if event.input.id == "api-key-input":
+            api_key = event.value.strip()
+            if api_key:
+                self.dismiss({"api_key": api_key, "provider": self.provider})
+
+    def action_dismiss_modal(self):
         self.dismiss(None)

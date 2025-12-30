@@ -2,12 +2,14 @@
 
 from pathlib import Path
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical, VerticalScroll, Center
+from textual.containers import Container, Horizontal, Vertical, Center
 from textual.widgets import Footer, Input, Static, RichLog
 from textual.binding import Binding
 
 from .themes import THEMES, get_next_theme
-from .modals import ModelSelectModal, ProviderConnectModal
+from .modals import ModelSelectModal, ProviderConnectModal, AuthMethodModal, APIKeyInputModal
+from .command_palette import CommandPaletteModal
+from codesm.auth import ClaudeOAuth
 
 LOGO = """
  ██████╗ ██████╗ ██████╗ ███████╗███████╗███╗   ███╗
@@ -161,7 +163,7 @@ class CodesmApp(App):
         Binding("ctrl+l", "clear", "Clear", show=True),
         Binding("ctrl+a", "connect_provider", "Connect Provider", show=True),
         Binding("ctrl+t", "toggle_theme", "Theme", show=True),
-        Binding("ctrl+p", "command_palette", "Commands", show=True),
+        Binding("ctrl+p", "show_command_palette", "Commands", show=True),
     ]
 
     def __init__(self, directory: Path, model: str):
@@ -171,6 +173,8 @@ class CodesmApp(App):
         self.agent = None
         self.in_chat = False
         self._theme_name = "dark"
+        self._showing_palette = False
+        self._claude_oauth = ClaudeOAuth()
 
     def compose(self) -> ComposeResult:
         with Container(id="main-container"):
@@ -202,7 +206,7 @@ class CodesmApp(App):
                         )
                     yield Static(f"{self._short_model_name()}", id="chat-model-indicator")
 
-            yield Static(f"~/{ self.directory}", id="status-bar")
+            yield Static(f"~/{self.directory}", id="status-bar")
         yield Footer()
 
     def _short_model_name(self) -> str:
@@ -211,6 +215,12 @@ class CodesmApp(App):
             _, model_id = self.model.split("/", 1)
             return model_id
         return self.model
+
+    def _get_active_input(self) -> Input:
+        """Get the currently active input"""
+        if self.in_chat:
+            return self.query_one("#chat-message-input", Input)
+        return self.query_one("#message-input", Input)
 
     async def on_mount(self):
         """Initialize when app mounts"""
@@ -224,67 +234,200 @@ class CodesmApp(App):
         input_widget = self.query_one("#message-input", Input)
         input_widget.focus()
 
+    def on_input_changed(self, event: Input.Changed):
+        """Handle input text changes - show command palette when / is typed"""
+        if self._showing_palette:
+            return
+
+        text = event.value
+        if text == "/":
+            self._showing_palette = True
+            event.input.value = ""
+            self.push_screen(CommandPaletteModal("/"), self._on_palette_dismiss)
+
+    def _on_palette_dismiss(self, result: str | None):
+        """Handle command palette dismiss"""
+        self._showing_palette = False
+        if result:
+            self.call_later(self._execute_command_sync, result)
+        self._get_active_input().focus()
+
+    def _execute_command_sync(self, cmd: str):
+        """Execute command synchronously, scheduling async operations"""
+        if cmd == "/models":
+            self.push_screen(ModelSelectModal(self.model), self._on_model_selected)
+        elif cmd == "/theme":
+            self.action_toggle_theme()
+        elif cmd == "/new":
+            self.action_new_session()
+        elif cmd == "/connect":
+            self.push_screen(ProviderConnectModal(), self._on_provider_selected)
+        elif cmd == "/help":
+            self.notify("Commands: /init, /new, /models, /agents, /session, /status, /theme, /editor, /connect, /help")
+        elif cmd == "/status":
+            self.notify(f"Model: {self.model} | Dir: {self.directory}")
+        elif cmd == "/init":
+            self.notify("AGENTS.md initialization (coming soon)")
+        elif cmd == "/agents":
+            self.notify("Agent list (coming soon)")
+        elif cmd == "/session":
+            self.notify("Session list (coming soon)")
+        elif cmd == "/editor":
+            self.notify("Editor (coming soon)")
+        else:
+            self.notify(f"Unknown command: {cmd}")
+
+    def _on_model_selected(self, result: str | None):
+        """Handle model selection"""
+        if result:
+            if result == "__connect_provider__":
+                self.push_screen(ProviderConnectModal(), self._on_provider_selected)
+                return
+            self.model = result
+            self._update_model_display()
+            if self.agent:
+                self.agent.model = result
+        self._get_active_input().focus()
+
+    def _on_provider_selected(self, result: str | None):
+        """Handle provider selection"""
+        if result:
+            if result == "anthropic":
+                self.push_screen(AuthMethodModal("anthropic"), self._on_auth_method_selected)
+            else:
+                self.notify(f"Selected provider: {result} (coming soon)")
+                self._get_active_input().focus()
+        else:
+            self._get_active_input().focus()
+
+    def _on_auth_method_selected(self, result: str | None):
+        """Handle auth method selection"""
+        if result:
+            if result == "manual-api-key":
+                self.push_screen(APIKeyInputModal("anthropic"), self._on_api_key_entered)
+            elif result == "create-api-key":
+                import webbrowser
+                webbrowser.open("https://console.anthropic.com/settings/keys")
+                self.notify("Opening Anthropic console - copy your API key and use /connect again")
+                self._get_active_input().focus()
+        else:
+            self._get_active_input().focus()
+
+    def _on_api_key_entered(self, result: dict | None):
+        """Handle API key entry"""
+        if result:
+            self._claude_oauth.save_api_key(result["api_key"])
+            self.notify("API key saved! You can now use Anthropic models.")
+            self._get_active_input().focus()
+        else:
+            self._get_active_input().focus()
+
+    async def _execute_command(self, cmd: str):
+        """Execute a slash command"""
+        if cmd == "/models":
+            await self._show_model_selector()
+        elif cmd == "/theme":
+            self.action_toggle_theme()
+        elif cmd == "/new":
+            self.action_new_session()
+        elif cmd == "/connect":
+            await self.action_connect_provider()
+        elif cmd == "/help":
+            self.notify("Commands: /init, /new, /models, /agents, /session, /status, /theme, /editor, /connect, /help")
+        elif cmd == "/status":
+            self.notify(f"Model: {self.model} | Dir: {self.directory}")
+        elif cmd == "/init":
+            self.notify("AGENTS.md initialization (coming soon)")
+        elif cmd == "/agents":
+            self.notify("Agent list (coming soon)")
+        elif cmd == "/session":
+            self.notify("Session list (coming soon)")
+        elif cmd == "/editor":
+            self.notify("Editor (coming soon)")
+        else:
+            self.notify(f"Unknown command: {cmd}")
+
     async def on_input_submitted(self, event: Input.Submitted):
         """Handle message submission"""
         message = event.value.strip()
         if not message:
             return
 
-        if message == "/models":
+        if message.startswith("/"):
             event.input.value = ""
-            await self._show_model_selector()
+            self._execute_command_sync(message)
             return
 
-        if message.startswith("/theme"):
-            event.input.value = ""
-            self.action_toggle_theme()
-            return
+        # Clear input immediately and save the message
+        event.input.value = ""
+        user_message = message
 
+        # Switch to chat view if needed
         if not self.in_chat:
             self._switch_to_chat()
 
+        # Schedule the actual chat handling after the UI has updated
+        self.call_later(lambda: self._handle_chat_message(user_message))
+
+    def _handle_chat_message(self, message: str):
+        """Handle the chat message after UI is ready"""
+        import asyncio
+        asyncio.create_task(self._async_handle_chat(message))
+
+    async def _async_handle_chat(self, message: str):
+        """Async handler for chat messages"""
         input_widget = self.query_one("#chat-message-input", Input)
-        input_widget.value = ""
         input_widget.disabled = True
 
-        messages = self.query_one("#messages", RichLog)
-        messages.write(f"[bold cyan]You:[/] {message}")
-        messages.write("")
-        messages.write("[dim]Thinking...[/]")
+        messages_log = self.query_one("#messages", RichLog)
+        
+        # Show user message immediately
+        messages_log.write(f"[bold cyan]You:[/bold cyan] {message}")
+        messages_log.write("")
+        messages_log.write("[dim]Thinking...[/dim]")
 
         try:
             response_text = ""
             async for chunk in self.agent.chat(message):
                 if not response_text:
-                    messages.write("[bold green]Assistant:[/]")
+                    # First chunk - clear thinking message and show header
+                    messages_log.clear()
+                    messages_log.write(f"[bold cyan]You:[/bold cyan] {message}")
+                    messages_log.write("")
+                    messages_log.write("[bold green]Assistant:[/bold green]")
                 response_text += chunk
-                messages.write(chunk, end="")
 
-            if not response_text:
-                messages.write("[yellow]No response received[/]")
+            # Write the complete response
+            if response_text:
+                messages_log.write(response_text)
+            else:
+                messages_log.write("[yellow]No response received[/yellow]")
 
         except Exception as e:
-            messages.write(f"[bold red]Error: {str(e)}[/]")
+            error_msg = str(e)
+            if "No Anthropic credentials" in error_msg:
+                messages_log.write("[bold red]Error:[/bold red] Not authenticated. Use /connect to authenticate with Anthropic.")
+            else:
+                messages_log.write(f"[bold red]Error:[/bold red] {error_msg}")
 
         finally:
             input_widget.disabled = False
             input_widget.focus()
-            messages.write("")
-            messages.write("[dim]───────────────────────────────────────[/]")
-            messages.write("")
+            messages_log.write("")
+            messages_log.write("[dim]───────────────────────────────────────[/dim]")
 
     def _switch_to_chat(self):
         """Switch from welcome view to chat view"""
         self.in_chat = True
-        self.query_one("#welcome-view").display = False
-        self.query_one("#chat-view").display = True
+        self.query_one("#welcome-view").styles.display = "none"
+        self.query_one("#chat-view").styles.display = "block"
         self.query_one("#chat-message-input", Input).focus()
 
     def _switch_to_welcome(self):
         """Switch from chat view to welcome view"""
         self.in_chat = False
-        self.query_one("#welcome-view").display = True
-        self.query_one("#chat-view").display = False
+        self.query_one("#welcome-view").styles.display = "block"
+        self.query_one("#chat-view").styles.display = "none"
         self.query_one("#message-input", Input).focus()
 
     async def _show_model_selector(self):
@@ -333,6 +476,7 @@ class CodesmApp(App):
             messages.clear()
             messages.write("[bold yellow]Display cleared[/]")
 
-    def action_command_palette(self):
-        """Show command palette"""
-        self.notify("Command palette (coming soon)")
+    def action_show_command_palette(self):
+        """Show command palette via Ctrl+P"""
+        self._showing_palette = True
+        self.push_screen(CommandPaletteModal("/"), self._on_palette_dismiss)
