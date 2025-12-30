@@ -1,0 +1,73 @@
+/* Textual CSS styles for codesm TUI */
+
+Screen {
+    background: $surface;
+}
+
+/* Sidebar styles */
+Sidebar {
+    width: 30;
+    background: $panel;
+    border-right: solid $primary;
+}
+
+.sidebar-title {
+    padding: 1;
+    background: $primary;
+    color: $text;
+    text-align: center;
+    text-style: bold;
+}
+
+#new-session {
+    margin: 1;
+    width: 100%;
+}
+
+#session-list {
+    height: 1fr;
+}
+
+SessionListItem {
+    padding: 0 1;
+    height: 3;
+}
+
+SessionListItem:hover {
+    background: $primary-darken-2;
+}
+
+SessionListItem.-selected {
+    background: $primary;
+    text-style: bold;
+}
+
+/* Chat view styles */
+ChatView {
+    background: $surface;
+    padding: 1;
+}
+
+ChatMessage {
+    margin: 1 0;
+    padding: 1;
+}
+
+ChatMessage.-user {
+    background: $primary-darken-3;
+}
+
+ChatMessage.-assistant {
+    background: $surface-darken-1;
+}
+
+/* Input styles */
+ChatInput {
+    dock: bottom;
+    border-top: solid $primary;
+}
+
+Input {
+    width: 100%;
+    height: 3;
+}
