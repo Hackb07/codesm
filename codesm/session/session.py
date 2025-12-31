@@ -118,3 +118,16 @@ class Session:
         """Clear all messages"""
         self.messages = []
         self.save()
+
+    def delete(self):
+        """Delete this session from storage"""
+        Storage.delete(["session", self.id])
+
+    @classmethod
+    def delete_by_id(cls, session_id: str) -> bool:
+        """Delete a session by ID"""
+        try:
+            Storage.delete(["session", session_id])
+            return True
+        except Exception:
+            return False
