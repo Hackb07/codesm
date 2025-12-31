@@ -752,15 +752,15 @@ class ThemeSelectModal(ModalScreen):
     CSS = """
     ThemeSelectModal {
         align: center middle;
-        background: rgba(0, 0, 0, 0.5);
+        background: transparent;
     }
 
     #modal-container {
-        width: 60;
+        width: 50;
         height: auto;
-        max-height: 80%;
+        max-height: 70%;
         background: $surface;
-        border: tall $primary;
+        border: tall $secondary;
         padding: 1 2;
     }
 
@@ -828,6 +828,7 @@ class ThemeSelectModal(ModalScreen):
     def __init__(self, current_theme: str = "dark"):
         super().__init__()
         self.current_theme = current_theme
+        self.original_theme = current_theme  # Store original to restore on cancel
         self.selected_index = 0
         self.visible_items: list[ModalListItem] = []
 
@@ -842,6 +843,10 @@ class ThemeSelectModal(ModalScreen):
     def on_mount(self):
         self._build_list()
         self.query_one("#search-input", Input).focus()
+
+    def _preview_theme(self, theme_name: str):
+        """Apply theme preview without saving"""
+        self.app.theme = f"codesm-{theme_name}"
 
     def _build_list(self, filter_text: str = ""):
         from .themes import THEME_DEFINITIONS
@@ -889,6 +894,8 @@ class ThemeSelectModal(ModalScreen):
         self.selected_index = (self.selected_index - 1) % len(self.visible_items)
         self.visible_items[self.selected_index].set_selected(True)
         self.visible_items[self.selected_index].scroll_visible()
+        # Preview the theme
+        self._preview_theme(self.visible_items[self.selected_index].item_id)
 
     def action_move_down(self):
         if not self.visible_items:
@@ -897,6 +904,8 @@ class ThemeSelectModal(ModalScreen):
         self.selected_index = (self.selected_index + 1) % len(self.visible_items)
         self.visible_items[self.selected_index].set_selected(True)
         self.visible_items[self.selected_index].scroll_visible()
+        # Preview the theme
+        self._preview_theme(self.visible_items[self.selected_index].item_id)
 
     def action_select(self):
         if self.visible_items:
@@ -904,6 +913,8 @@ class ThemeSelectModal(ModalScreen):
             self.dismiss(selected.item_id)
 
     def action_dismiss_modal(self):
+        # Restore original theme on cancel
+        self._preview_theme(self.original_theme)
         self.dismiss(None)
 
 
