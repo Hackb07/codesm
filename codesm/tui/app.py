@@ -38,6 +38,34 @@ class CodesmApp(App):
         background: $background;
     }
 
+    /* Footer styling - use theme colors */
+    Footer {
+        background: $surface;
+        color: $text-muted;
+    }
+
+    Footer > .footer--highlight {
+        background: transparent;
+        color: $secondary;
+        text-style: bold;
+    }
+
+    Footer > .footer--highlight-key {
+        background: $secondary;
+        color: $background;
+        text-style: bold;
+    }
+
+    Footer > .footer--key {
+        background: $primary;
+        color: $foreground;
+        text-style: bold;
+    }
+
+    Footer > .footer--description {
+        color: $text-muted;
+    }
+
     #main-container {
         width: 100%;
         height: 100%;
