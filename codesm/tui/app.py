@@ -603,6 +603,7 @@ class CodesmApp(App):
 
             response_text = ""
             tool_widgets: dict[str, ToolCallWidget] = {}
+            tools_used: list[str] = []
 
             async for chunk in self.agent.chat(message):
                 if hasattr(chunk, 'type'):
@@ -617,6 +618,8 @@ class CodesmApp(App):
                             pending=True,
                         )
                         tool_widgets[chunk.id] = tool_widget
+                        if chunk.name not in tools_used:
+                            tools_used.append(chunk.name)
                         messages_container.mount(tool_widget)
                         self.call_later(lambda: chat_container.scroll_end(animate=False))
                     elif chunk.type == "tool_result":
@@ -631,7 +634,7 @@ class CodesmApp(App):
             # Add assistant response
             if response_text:
                 logger.info(f"Got response, length: {len(response_text)}")
-                assistant_msg = ChatMessage("assistant", response_text)
+                assistant_msg = ChatMessage("assistant", response_text, tools_used=tools_used)
                 messages_container.mount(assistant_msg)
                 
                 # Update sidebar with token/cost estimates and session title

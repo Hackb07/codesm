@@ -96,22 +96,13 @@ class ReActLoop:
             
             # Process results in order
             for call_id, name, result in results:
-                # Add tool result to messages
+                # Add tool result to messages (for this turn only, not persisted)
                 tool_result_msg = {
                     "role": "tool",
                     "tool_call_id": call_id,
                     "content": result,
                 }
                 current_messages.append(tool_result_msg)
-                
-                # Persist to session if available
-                if session:
-                    session.add_message(
-                        role="tool",
-                        content=result,
-                        tool_call_id=call_id,
-                        name=name,
-                    )
                 
                 # Yield tool result as a chunk
                 yield StreamChunk(

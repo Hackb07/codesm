@@ -178,10 +178,11 @@ class ChatMessage(SelectableMixin, Static):
     }
     """
 
-    def __init__(self, role: str, content: str, **kwargs):
+    def __init__(self, role: str, content: str, tools_used: list[str] | None = None, **kwargs):
         super().__init__(**kwargs)
         self.role = role
         self.content = content
+        self.tools_used = tools_used or []
         self.set_class(True, role)
 
     def compose(self):
@@ -190,7 +191,11 @@ class ChatMessage(SelectableMixin, Static):
             yield Static("[dim]You[/dim]", classes="message-meta")
         else:
             yield Static(styled_markdown(self.content))
-            yield Static("[#5dd9c1]▣[/] [dim]Assistant[/dim]", classes="message-meta")
+            meta_parts = ["[#5dd9c1]▣[/]", "[dim]Assistant[/dim]"]
+            if self.tools_used:
+                tools_str = ", ".join(self.tools_used)
+                meta_parts.append(f"[dim]· used {tools_str}[/dim]")
+            yield Static(" ".join(meta_parts), classes="message-meta")
 
 
 class ContextSidebar(Static):

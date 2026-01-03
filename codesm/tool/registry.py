@@ -18,10 +18,10 @@ class ToolRegistry:
         from .bash import BashTool
         from .grep import GrepTool
         from .glob import GlobTool
-        from .web import WebTool
+        from .webfetch import WebFetchTool
         from .websearch import WebSearchTool
 
-        for tool_class in [ReadTool, WriteTool, EditTool, BashTool, GrepTool, GlobTool, WebTool, WebSearchTool]:
+        for tool_class in [ReadTool, WriteTool, EditTool, BashTool, GrepTool, GlobTool, WebFetchTool, WebSearchTool]:
             tool = tool_class()
             self._tools[tool.name] = tool
     

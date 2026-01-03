@@ -99,8 +99,18 @@ class Session:
         self.save()
     
     def get_messages(self) -> list[dict]:
-        """Get all messages for LLM context (preserves full structure)"""
-        return list(self.messages)
+        """Get all messages for LLM context (user/assistant only, no tool messages)"""
+        # Filter out tool messages - they're ephemeral within a turn
+        # Also filter out assistant messages with tool_calls (intermediate steps)
+        result = []
+        for m in self.messages:
+            role = m.get("role")
+            if role == "tool":
+                continue
+            if role == "assistant" and m.get("tool_calls"):
+                continue
+            result.append(m)
+        return result
     
     def get_messages_for_display(self) -> list[dict]:
         """Get messages formatted for display (user/assistant only)"""
