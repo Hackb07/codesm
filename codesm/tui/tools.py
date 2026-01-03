@@ -13,6 +13,7 @@ TOOL_ICONS = {
     "grep": "✓",
     "glob": "✓",
     "web": "%",
+    "webfetch": "%",
     "websearch": "◈",
     "default": "⚙",
 }
@@ -25,6 +26,7 @@ TOOL_COLORS = {
     "grep": "#c6a0f6",
     "glob": "#c6a0f6",
     "web": "#8aadf4",
+    "webfetch": "#8aadf4",
     "websearch": "#8aadf4",
     "default": "#939ab7",
 }
@@ -118,13 +120,17 @@ class ToolCallWidget(Static):
                 result += f" in {self._short_path(path)}"
             return result
         
-        elif name == "web":
+        elif name == "web" or name == "webfetch":
             url = args.get("url", "")
-            return f"Fetch {url[:50]}{'...' if len(url) > 50 else ''}"
+            return f"WebFetch {url}"
         
         elif name == "websearch":
             query = args.get("query", "")
-            return f'Web Search "{query}"'
+            num_results = args.get("num_results", "")
+            result = f'Web Search "{query}"'
+            if num_results:
+                result += f" ({num_results} results)"
+            return result
         
         else:
             return f"{name} {self._format_args(args)}"
