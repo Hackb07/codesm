@@ -393,8 +393,43 @@ class CodesmApp(App):
         # Update model display to show provider prefix
         self._update_model_display()
 
+        # Initialize LSP servers
+        self._init_lsp()
+
         input_widget = self.query_one("#message-input", Input)
         input_widget.focus()
+
+    def _init_lsp(self):
+        """Initialize LSP servers in background"""
+        import asyncio
+        
+        async def start_lsp():
+            try:
+                from codesm import lsp
+                results = await lsp.init(str(self.directory))
+                
+                # Update sidebar with LSP status
+                servers = []
+                status = lsp.status()
+                for key, info in status.items():
+                    servers.append({
+                        "name": info["name"],
+                        "status": "connected" if info["running"] else "error",
+                    })
+                
+                if servers:
+                    try:
+                        sidebar = self.query_one("#context-sidebar", ContextSidebar)
+                        sidebar.update_lsp_status(servers)
+                    except Exception:
+                        pass
+                    
+                    self.notify(f"LSP: {len(servers)} server(s) connected")
+                    logger.info(f"LSP initialized: {results}")
+            except Exception as e:
+                logger.error(f"Failed to initialize LSP: {e}")
+        
+        asyncio.create_task(start_lsp())
 
     def on_input_changed(self, event: Input.Changed):
         """Handle input text changes - show command palette when / is typed"""

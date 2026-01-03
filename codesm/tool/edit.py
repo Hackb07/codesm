@@ -53,6 +53,28 @@ class EditTool(Tool):
                 diff = f"-{old_content}\n+{new_content}"
             
             path.write_text(updated)
-            return f"Successfully edited {path}\n\n{diff}"
+            result = f"Successfully edited {path}\n\n{diff}"
+            
+            # Get LSP diagnostics for the edited file
+            diagnostics_output = await self._get_diagnostics(str(path))
+            if diagnostics_output:
+                result += f"\n\n{diagnostics_output}"
+            
+            return result
         except Exception as e:
             return f"Error editing file: {e}"
+    
+    async def _get_diagnostics(self, path: str) -> str:
+        """Get diagnostics for a file after editing."""
+        try:
+            from codesm import lsp
+            from .diagnostics import format_diagnostics
+            
+            diagnostics = await lsp.touch_file(path)
+            errors = [d for d in diagnostics if d.severity == "error"]
+            
+            if errors:
+                return f"⚠️ Errors detected:\n{format_diagnostics(errors)}"
+            return ""
+        except Exception:
+            return ""

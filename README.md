@@ -21,7 +21,7 @@ An AI coding agent built with Python + Rust. Features a TUI interface, multi-pro
 ### To Be Implemented
 
 #### Core Features (from opencode)
-- [ ] LSP integration
+- [X] LSP integration
 - [ ] Code search (semantic search)
 - [ ] Multi-edit (batch file edits)
 - [ ] Patch tool
@@ -33,7 +33,8 @@ An AI coding agent built with Python + Rust. Features a TUI interface, multi-pro
 - [ ] Permission system
 - [ ] IDE integrations
 - [ ] Web search tool improvements
-- [ ] Rust core performance modules
+- [ ] Rust core performance 
+- [X] Web Search
 
 #### Smart Features (inspired by Amp)
 - [ ] Oracle - reasoning model advisor for planning, review, debugging

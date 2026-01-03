@@ -292,6 +292,21 @@ class ContextSidebar(Static):
         except Exception:
             pass
 
+    def update_lsp_status(self, servers: list[dict]):
+        """Update LSP server status"""
+        try:
+            lsp_widget = self.query_one("#lsp-status", Static)
+            if not servers:
+                lsp_widget.update("[dim]No active servers[/dim]")
+            else:
+                lines = []
+                for server in servers:
+                    status_icon = "[green]●[/]" if server.get("status") == "connected" else "[red]●[/]"
+                    lines.append(f"{status_icon} {server.get('name', 'unknown')}")
+                lsp_widget.update("\n".join(lines))
+        except Exception:
+            pass
+
 
 class PromptInput(Vertical):
     """Input component with status bar - OpenCode style"""

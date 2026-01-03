@@ -32,6 +32,28 @@ class WriteTool(Tool):
             # Create parent directories if needed
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content)
-            return f"Successfully wrote {len(content)} bytes to {path}"
+            result = f"Successfully wrote {len(content)} bytes to {path}"
+            
+            # Get LSP diagnostics for the written file
+            diagnostics_output = await self._get_diagnostics(str(path))
+            if diagnostics_output:
+                result += f"\n\n{diagnostics_output}"
+            
+            return result
         except Exception as e:
             return f"Error writing file: {e}"
+    
+    async def _get_diagnostics(self, path: str) -> str:
+        """Get diagnostics for a file after writing."""
+        try:
+            from codesm import lsp
+            from .diagnostics import format_diagnostics
+            
+            diagnostics = await lsp.touch_file(path)
+            errors = [d for d in diagnostics if d.severity == "error"]
+            
+            if errors:
+                return f"⚠️ Errors detected:\n{format_diagnostics(errors)}"
+            return ""
+        except Exception:
+            return ""
