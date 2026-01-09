@@ -1,0 +1,77 @@
+Fetches and reads content from a URL. Use this to read web pages, documentation, and online resources.
+
+This tool retrieves web content and converts HTML to readable markdown format.
+
+Usage:
+- url: The URL to fetch (required, must start with http:// or https://)
+- format: Output format - "text", "markdown", or "html" (optional, default: "markdown")
+
+Returns the content of the web page, converted to readable text/markdown.
+
+# When to Use WebFetch
+
+Use this tool when:
+- The user provides a specific URL to read
+- You need to read documentation for a library or framework
+- You found a relevant URL from websearch and need its full content
+- The user asks about content on a specific webpage
+- You need to verify information from an authoritative source
+
+<example>
+Reading documentation
+User: "How do I use the requests library in Python?"
+[webfetch url="https://requests.readthedocs.io/en/latest/user/quickstart/"]
+</example>
+
+<example>
+Reading a GitHub README
+[webfetch url="https://github.com/user/repo/blob/main/README.md"]
+</example>
+
+<example>
+Following up on a search result
+After websearch found relevant pages:
+[webfetch url="https://docs.python.org/3/library/asyncio.html"]
+</example>
+
+<example>
+Reading an API reference
+[webfetch url="https://api.example.com/docs/endpoints"]
+</example>
+
+# Handling Redirects
+
+If the response indicates a redirect to a different host, immediately make a new request with the redirect URL:
+
+<example>
+[webfetch url="https://example.com/docs"]
+Response: "Redirecting to https://docs.example.com/getting-started"
+[webfetch url="https://docs.example.com/getting-started"]
+</example>
+
+# Output Formats
+
+- **markdown** (default): HTML converted to readable markdown, best for documentation
+- **text**: Plain text with HTML tags stripped, best for simple content
+- **html**: Raw HTML, useful when you need to see the page structure
+
+# Content Limits
+
+- Maximum response size is 50,000 characters
+- Larger pages will be truncated with a "... (content truncated)" notice
+- For very long documentation, consider searching for specific sections
+
+# Best Practices
+
+1. **Be specific with URLs**: Use direct links to specific documentation pages rather than homepages
+2. **Combine with websearch**: Use websearch to find URLs, then webfetch to read them
+3. **Read before implementing**: When using a new library, read its docs first
+4. **Verify information**: When unsure about syntax or APIs, fetch the official docs
+
+# Common Mistakes to Avoid
+
+- DO NOT fetch localhost or internal network URLs - they won't work
+- DO NOT fetch URLs that require authentication - the tool can't log in
+- DO NOT repeatedly fetch the same URL - the content doesn't change quickly
+- DO NOT guess URLs - use websearch to find the correct documentation pages
+- DO NOT fetch when you already know the answer - save it for when you need current information

@@ -1,0 +1,50 @@
+Creates a new file or completely overwrites an existing file with the provided content.
+
+Usage:
+- The path parameter must be an absolute path, not a relative path
+- If the file exists, it will be COMPLETELY OVERWRITTEN - use edit tool for partial changes
+- If the parent directory doesn't exist, it will be created automatically
+- The content parameter should contain the complete file content
+
+When to use Write vs Edit:
+- Use WRITE when: Creating new files, replacing entire file contents, starting fresh
+- Use EDIT when: Modifying specific parts of an existing file, making targeted changes
+
+Best practices:
+- ALWAYS prefer editing existing files over creating new ones
+- Before writing a new file, check if a similar file already exists that could be modified instead
+- When creating new files, follow the existing code style and conventions in the project
+- Include all necessary imports, headers, and boilerplate in new files
+
+<example>
+Creating a new Python module
+[write path="/home/user/project/src/new_feature.py" content="\"\"\"New feature module.\"\"\"
+
+from typing import Optional
+
+def new_function(arg: str) -> Optional[str]:
+    \"\"\"Process the argument.\"\"\"
+    return arg.upper() if arg else None
+"]
+</example>
+
+<example>
+Creating a configuration file
+[write path="/home/user/project/config/settings.json" content="{
+  \"debug\": false,
+  \"log_level\": \"info\",
+  \"max_connections\": 100
+}"]
+</example>
+
+Common mistakes to avoid:
+- DO NOT use write to make small changes to existing files - use edit instead
+- DO NOT create files that duplicate existing functionality - check first
+- DO NOT forget to include proper file headers, imports, or module docstrings
+- DO NOT create empty or placeholder files unless explicitly requested
+- DO NOT use relative paths - always use absolute paths
+
+Security considerations:
+- NEVER write files containing secrets, API keys, or credentials
+- NEVER overwrite important system files or configuration without explicit user request
+- Be cautious when writing executable scripts - ensure they are safe

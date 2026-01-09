@@ -1,0 +1,42 @@
+Reads a file from the local filesystem. You can access any file directly by using this tool.
+
+Assume this tool is able to read all files on the machine. If the user provides a path to a file, assume that path is valid. It is okay to read a file that does not exist; an error will be returned.
+
+Usage:
+- The path parameter must be an absolute path, not a relative path
+- By default, it reads the entire file
+- You can optionally specify start_line and end_line to read a specific range (especially useful for large files)
+- Results are returned with line numbers prefixed (e.g., "1: first line")
+- Line numbers are 1-indexed
+
+Best practices:
+- You MUST read a file before editing it. Never edit a file you haven't read in this conversation.
+- When exploring unfamiliar code, read the file first to understand its structure before making changes.
+- For large files (>500 lines), consider reading specific sections using start_line and end_line.
+- You can call this tool multiple times in parallel to read multiple files at once - this is faster than sequential reads.
+
+<example>
+User asks about a function in src/utils.py
+Good: Read the entire file first to understand context
+[read path="/home/user/project/src/utils.py"]
+</example>
+
+<example>
+User asks to fix line 450 in a large file
+Good: Read a focused range around that line
+[read path="/home/user/project/large_file.py" start_line=440 end_line=470]
+</example>
+
+<example>
+User asks about multiple related files
+Good: Read all files in parallel in a single response
+[read path="/home/user/project/src/auth.py"]
+[read path="/home/user/project/src/user.py"]
+[read path="/home/user/project/src/session.py"]
+</example>
+
+Common mistakes to avoid:
+- DO NOT edit a file without reading it first - you need to see the exact content to make accurate edits
+- DO NOT use relative paths like "./src/file.py" - always use absolute paths
+- DO NOT read the same file multiple times unnecessarily - the content doesn't change unless you edit it
+- If a file doesn't exist, you will get an error - this is expected behavior, not a bug

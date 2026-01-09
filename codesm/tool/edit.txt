@@ -1,0 +1,77 @@
+Performs exact string replacements in files. This is the primary tool for modifying existing code.
+
+Usage:
+- The path parameter must be an absolute path
+- old_content must match EXACTLY what's in the file (including whitespace and indentation)
+- new_content is what will replace old_content
+- Only the first occurrence is replaced by default
+
+CRITICAL: You MUST read a file before editing it. This tool will work best when you've seen the exact content you're replacing.
+
+How to make successful edits:
+1. First, read the file to see its current content
+2. Copy the EXACT text you want to replace (including all whitespace)
+3. Provide the new content with proper indentation matching the file's style
+
+<example>
+Fixing a bug in a function
+First: Read the file
+[read path="/home/user/project/src/utils.py"]
+
+Then: Make the edit with exact match
+[edit path="/home/user/project/src/utils.py" 
+  old_content="def calculate(x):
+    return x * 2"
+  new_content="def calculate(x):
+    if x is None:
+        return 0
+    return x * 2"]
+</example>
+
+<example>
+Adding an import statement
+[edit path="/home/user/project/src/main.py"
+  old_content="import os
+import sys"
+  new_content="import os
+import sys
+import json"]
+</example>
+
+<example>
+Updating a configuration value
+[edit path="/home/user/project/config.py"
+  old_content="DEBUG = True"
+  new_content="DEBUG = False"]
+</example>
+
+Common failure modes and how to avoid them:
+
+1. "oldString not found in content"
+   - The old_content doesn't match exactly what's in the file
+   - Check for: extra spaces, wrong indentation, missing newlines
+   - Solution: Re-read the file and copy the exact content
+
+2. "oldString found multiple times"
+   - The old_content appears more than once in the file
+   - Solution: Include more surrounding context to make it unique
+   
+   Bad:  old_content="return None"
+   Good: old_content="def process_data(x):
+       if not x:
+           return None"
+
+3. Wrong indentation in new_content
+   - Your replacement has different indentation than the original
+   - Solution: Match the exact indentation style (tabs vs spaces, indent level)
+
+Best practices:
+- Make small, focused edits rather than replacing large blocks
+- Include enough context in old_content to uniquely identify the location
+- Preserve the file's existing code style (indentation, quotes, etc.)
+- After editing, the tool will show any LSP diagnostics (errors/warnings)
+
+When NOT to use edit:
+- Creating new files → use write tool
+- Replacing the entire file → use write tool
+- Searching for content → use grep tool first

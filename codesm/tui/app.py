@@ -10,12 +10,13 @@ from textual.widgets import Footer, Input, Static, RichLog, Markdown
 from textual.binding import Binding
 
 from .themes import THEMES, get_next_theme
-from .modals import ModelSelectModal, ProviderConnectModal, AuthMethodModal, APIKeyInputModal, ThemeSelectModal
+from .modals import ModelSelectModal, ProviderConnectModal, AuthMethodModal, APIKeyInputModal, ThemeSelectModal, PermissionModal
 from .session_modal import SessionListModal
 from .command_palette import CommandPaletteModal
 from .chat import ChatMessage, ContextSidebar, PromptInput
 from .tools import ToolCallWidget, ToolResultWidget
 from codesm.auth import ClaudeOAuth
+from codesm.permission import get_permission_manager, PermissionRequest, PermissionResponse, respond_permission
 
 logger = logging.getLogger(__name__)
 
@@ -293,6 +294,11 @@ class CodesmApp(App):
         self._sidebar_visible = True
         self._total_tokens = 0
         self._total_cost = 0.0
+        self._pending_permission_requests: dict[str, PermissionRequest] = {}
+        
+        # Set up permission callback
+        permission_manager = get_permission_manager()
+        permission_manager.set_request_callback(self._on_permission_request)
 
     def compose(self) -> ComposeResult:
         with Container(id="main-container"):
@@ -889,3 +895,20 @@ class CodesmApp(App):
         """Show command palette via Ctrl+P"""
         self._showing_palette = True
         self.push_screen(CommandPaletteModal("/"), self._on_palette_dismiss)
+
+    def _on_permission_request(self, request: PermissionRequest):
+        """Called when a tool requests permission - shows the modal."""
+        self._pending_permission_requests[request.id] = request
+        self.call_from_thread(self._show_permission_modal, request)
+
+    def _show_permission_modal(self, request: PermissionRequest):
+        """Show the permission modal and handle the response."""
+        async def handle_permission():
+            result = await self.push_screen_wait(PermissionModal(request))
+            if result is not None:
+                respond_permission(request.session_id, request.id, result)
+            else:
+                respond_permission(request.session_id, request.id, PermissionResponse.DENY)
+            self._pending_permission_requests.pop(request.id, None)
+        
+        self.run_worker(handle_permission())

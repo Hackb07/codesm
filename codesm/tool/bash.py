@@ -34,6 +34,24 @@ class BashTool(Tool):
         cwd = args.get("cwd") or context.get("cwd", ".")
         timeout = args.get("timeout", 120)
         
+        # Check if command requires permission
+        from codesm.permission import requires_permission, ask_permission, PermissionDeniedError
+        
+        needs_permission, perm_type, reason = requires_permission(command)
+        if needs_permission:
+            session_id = context.get("session_id", "default")
+            try:
+                await ask_permission(
+                    session_id=session_id,
+                    type=perm_type,
+                    command=command,
+                    title=f"Allow {perm_type} command?",
+                    description=f"The agent wants to execute:\n\n```\n{command}\n```\n\nReason: {reason}",
+                    metadata={"command": command, "cwd": cwd},
+                )
+            except PermissionDeniedError as e:
+                return f"Permission denied: {e.message}\n\nThe user rejected this command. Do not retry without asking the user first."
+        
         # Try Rust core first
         try:
             from codesm_core import execute_command

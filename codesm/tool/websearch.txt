@@ -1,0 +1,109 @@
+Searches the web for current information using Exa AI.
+
+This is your primary tool for finding up-to-date information, documentation, tutorials, and answers to questions beyond your knowledge cutoff.
+
+Usage:
+- query: The search query (required)
+- num_results: Number of results to return (optional, default: 8)
+- type: Search type - "auto", "fast", or "deep" (optional, default: "auto")
+  - auto: Balanced search (recommended)
+  - fast: Quick results, less comprehensive
+  - deep: Thorough search, takes longer
+
+Returns search results with titles, URLs, and snippets.
+
+# When to Use WebSearch
+
+You MUST use this tool proactively when:
+- The user asks "what is X?" for any term, product, library, or concept you're not 100% certain about
+- The user asks about current events, recent releases, or up-to-date information
+- The user asks about any external tool, library, framework, or service
+- You need to find documentation or examples for a library
+- You're unsure about something and need to verify
+- The user asks how to use a specific technology you haven't seen recently
+- You need to find the correct syntax or API for a library
+
+<example>
+User asks about an unfamiliar library
+User: "How do I use Polars for data analysis?"
+[websearch query="Polars Python dataframe library tutorial"]
+</example>
+
+<example>
+User asks about recent changes
+User: "What's new in Python 3.12?"
+[websearch query="Python 3.12 new features changelog"]
+</example>
+
+<example>
+User asks about best practices
+User: "What's the best way to structure a FastAPI project?"
+[websearch query="FastAPI project structure best practices 2024"]
+</example>
+
+<example>
+Verifying API syntax
+[websearch query="SQLAlchemy 2.0 async session create_async_engine example"]
+</example>
+
+<example>
+Finding error solutions
+User: "I'm getting 'ModuleNotFoundError: No module named cv2'"
+[websearch query="ModuleNotFoundError cv2 opencv-python install fix"]
+</example>
+
+# Search Query Tips
+
+Write queries like you would search on Google:
+- Be specific: "FastAPI dependency injection example" not just "FastAPI"
+- Include version when relevant: "React 18 useEffect cleanup"
+- Add context: "Docker compose postgres volume persist data"
+- Include error messages: "TypeError: Cannot read property 'map' of undefined React"
+
+Good queries:
+- "Pandas read_csv encoding utf-8 error fix"
+- "Next.js 14 app router server components tutorial"
+- "Rust async await tokio beginner guide"
+- "Git rebase vs merge when to use"
+
+Bad queries (too vague):
+- "Python"
+- "How to code"
+- "Error fix"
+- "Best library"
+
+# Workflow: Search Then Fetch
+
+For comprehensive research:
+1. Use websearch to find relevant pages
+2. Use webfetch to read the most relevant results in detail
+
+<example>
+Researching a new library
+[websearch query="Pydantic v2 migration guide"]
+Result includes: https://docs.pydantic.dev/latest/migration/
+
+[webfetch url="https://docs.pydantic.dev/latest/migration/"]
+</example>
+
+# When NOT to Use WebSearch
+
+- For questions about the local codebase → use grep/glob/read
+- For file operations → use the file tools
+- For running commands → use bash
+- When you're confident about well-established facts
+- For the same query you just searched (results don't change that fast)
+
+# Best Practices
+
+1. **Search before guessing**: If you're not 100% sure, search first
+2. **Never say "I don't know"** without trying a search first
+3. **Use specific queries**: More specific = better results
+4. **Follow up with webfetch**: Read the actual documentation pages
+5. **Cite your sources**: Tell the user where you found the information
+
+Common mistakes to avoid:
+- DO NOT guess library APIs without checking documentation
+- DO NOT say "I don't have information about X" without searching
+- DO NOT search for things you can find in the local codebase
+- DO NOT use overly generic queries that return irrelevant results

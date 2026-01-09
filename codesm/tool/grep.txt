@@ -1,0 +1,95 @@
+Searches for text patterns in files using fast regex matching.
+
+This is your primary tool for finding code, functions, classes, variables, strings, and any text content in the codebase. It's powered by ripgrep for speed.
+
+Usage:
+- pattern: The regex pattern to search for (required)
+- path: Directory or file to search in (optional, defaults to project root)
+- case_sensitive: Whether to match case (optional, default: false)
+- file_pattern: Glob pattern to filter files, e.g., "*.py" (optional)
+
+The tool returns matching lines with file paths and line numbers.
+
+Best practices:
+- Start with broader searches, then narrow down
+- Use file_pattern to limit search to specific file types
+- Search for function/class definitions to understand code structure
+- Combine with read tool: grep to find, read to understand context
+
+<example>
+Finding a function definition
+[grep pattern="def process_user" path="/home/user/project/src"]
+</example>
+
+<example>
+Finding all usages of a class
+[grep pattern="UserManager" path="/home/user/project"]
+</example>
+
+<example>
+Searching only in Python files
+[grep pattern="import requests" path="/home/user/project" file_pattern="*.py"]
+</example>
+
+<example>
+Case-sensitive search for constants
+[grep pattern="API_KEY" path="/home/user/project" case_sensitive=true]
+</example>
+
+<example>
+Finding TODO comments
+[grep pattern="TODO|FIXME|HACK" path="/home/user/project"]
+</example>
+
+# Regex Pattern Tips
+
+Common patterns:
+- `def function_name` - Find function definitions (Python)
+- `class ClassName` - Find class definitions
+- `import.*module` - Find imports of a module
+- `raise \w+Error` - Find exception raises
+- `@decorator` - Find decorator usages
+- `TODO|FIXME` - Find code annotations
+
+Regex syntax:
+- `.` matches any character
+- `*` matches zero or more of the preceding
+- `+` matches one or more of the preceding
+- `?` matches zero or one of the preceding
+- `|` means OR (alternative)
+- `\w` matches word characters (letters, digits, underscore)
+- `\s` matches whitespace
+- `^` matches start of line
+- `$` matches end of line
+- `(group)` creates a capture group
+- `[abc]` matches any of a, b, or c
+- `[^abc]` matches anything except a, b, or c
+
+<example>
+Finding function calls with arguments
+[grep pattern="fetch_data\(.*\)" path="/home/user/project"]
+</example>
+
+<example>
+Finding variable assignments
+[grep pattern="^\s*config\s*=" path="/home/user/project"]
+</example>
+
+# Search Strategy
+
+For exploring unfamiliar code:
+1. Search for the main concept: `grep pattern="authentication"`
+2. Find the definition: `grep pattern="class Auth|def auth"`
+3. Find usages: `grep pattern="Auth\(|auth\("`
+4. Read the relevant files to understand fully
+
+For debugging:
+1. Search for error messages: `grep pattern="Error: connection failed"`
+2. Find the source: `grep pattern="raise.*ConnectionError"`
+3. Trace the call chain by searching for the function name
+
+Common mistakes to avoid:
+- DO NOT use bash grep command - use this tool instead (it's faster and better formatted)
+- DO NOT search without a path in large codebases - narrow down to relevant directories
+- DO NOT use overly complex regex when simple patterns work
+- DO NOT forget to escape special regex characters: . * + ? [ ] ( ) { } ^ $ \ |

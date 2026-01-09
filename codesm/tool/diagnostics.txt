@@ -1,0 +1,105 @@
+Gets code diagnostics (errors, warnings, hints) from language servers.
+
+This tool leverages LSP (Language Server Protocol) to provide real-time code analysis, showing syntax errors, type errors, unused imports, and other issues.
+
+Usage:
+- path: Absolute path to a file (optional - if not provided, returns all diagnostics)
+- severity: Filter by severity - "error", "warning", or "all" (optional, default: "all")
+
+Returns diagnostics with file path, line number, column, severity, and message.
+
+# When to Use Diagnostics
+
+Use this tool to:
+- Check for errors after editing a file
+- Verify that your changes didn't break anything
+- Find all type errors in a project
+- Identify unused imports or variables
+- Get linting feedback
+
+<example>
+Check a specific file after editing
+[diagnostics path="/home/user/project/src/main.py"]
+</example>
+
+<example>
+Get only errors (ignore warnings)
+[diagnostics path="/home/user/project/src/api.py" severity="error"]
+</example>
+
+<example>
+Check entire project for errors
+[diagnostics severity="error"]
+</example>
+
+# Understanding Diagnostics Output
+
+The output includes:
+- ❌ Error: Must be fixed - code won't work correctly
+- ⚠️ Warning: Should probably be fixed - potential issues
+- ℹ️ Info: Suggestions and information
+- 💡 Hint: Optional improvements
+
+<example>
+Output format:
+❌ /home/user/project/src/main.py:15:5 [pyright]
+   "user" is not defined
+
+⚠️ /home/user/project/src/utils.py:3:1 [ruff]
+   "os" imported but unused
+</example>
+
+# Workflow Integration
+
+The edit tool automatically runs diagnostics after each edit and shows any errors. However, you can also run diagnostics manually to:
+
+1. Check before starting work:
+   [diagnostics severity="error"]
+   
+2. Verify fixes worked:
+   [edit path="..." old_content="..." new_content="..."]
+   [diagnostics path="..." severity="error"]
+
+3. Get a project health check:
+   [diagnostics]
+
+# Supported Languages
+
+Diagnostics work for any language with an LSP server configured:
+- Python (pyright, pylsp)
+- TypeScript/JavaScript (tsserver)
+- Rust (rust-analyzer)
+- Go (gopls)
+- And more...
+
+# Best Practices
+
+1. **Check after significant changes**: Run diagnostics after refactoring
+2. **Fix errors first**: Errors (❌) are more important than warnings (⚠️)
+3. **Use with edit**: The edit tool shows diagnostics automatically
+4. **Filter when needed**: Use severity="error" to focus on critical issues
+
+# Common Diagnostic Patterns
+
+Type errors:
+- "Type X is not assignable to type Y"
+- Fix: Check your type annotations and function signatures
+
+Undefined variables:
+- "'variable' is not defined"
+- Fix: Import or define the variable before use
+
+Unused imports:
+- "'module' imported but unused"
+- Fix: Remove the unused import or use it
+
+Missing returns:
+- "Function is missing return type annotation"
+- Fix: Add return type or return statement
+
+# When NOT to Use Diagnostics
+
+- For searching code → use grep
+- For finding files → use glob  
+- For checking test results → use bash with test command
+- When LSP servers aren't configured for the language

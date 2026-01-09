@@ -1,0 +1,95 @@
+Finds files matching a glob pattern. Use this to discover files in the project.
+
+This is your primary tool for file discovery - finding what files exist, locating files by name or extension, and understanding project structure.
+
+Usage:
+- pattern: Glob pattern to match files (required)
+- path: Base directory to search from (optional, defaults to project root)
+
+Returns a list of matching file paths sorted by modification time (newest first).
+
+# Glob Pattern Syntax
+
+- `*` matches any characters except path separator
+- `**` matches any characters including path separators (recursive)
+- `?` matches exactly one character
+- `[abc]` matches any of a, b, or c
+- `[!abc]` matches anything except a, b, or c
+- `{a,b,c}` matches a or b or c
+
+<example>
+Find all Python files in a project
+[glob pattern="**/*.py" path="/home/user/project"]
+</example>
+
+<example>
+Find all test files
+[glob pattern="**/test_*.py" path="/home/user/project"]
+or
+[glob pattern="**/*_test.py" path="/home/user/project"]
+</example>
+
+<example>
+Find configuration files
+[glob pattern="**/*.{json,yaml,yml,toml}" path="/home/user/project"]
+</example>
+
+<example>
+Find files in a specific directory
+[glob pattern="src/models/*.py" path="/home/user/project"]
+</example>
+
+<example>
+Find README files
+[glob pattern="**/README*" path="/home/user/project"]
+</example>
+
+<example>
+Find all TypeScript and JavaScript files
+[glob pattern="**/*.{ts,tsx,js,jsx}" path="/home/user/project"]
+</example>
+
+# Common Use Cases
+
+Understanding project structure:
+- `**/*.py` - All Python files
+- `**/*.{ts,tsx}` - All TypeScript files
+- `**/package.json` - Find all npm packages
+- `**/Cargo.toml` - Find all Rust crates
+- `**/__init__.py` - Find all Python packages
+
+Finding specific file types:
+- `**/*.test.{js,ts}` - Test files
+- `**/*.spec.{js,ts}` - Spec files
+- `**/*.md` - Documentation
+- `**/*.sql` - Database migrations
+- `**/Dockerfile*` - Docker files
+
+Finding configuration:
+- `**/.env*` - Environment files
+- `**/.*rc` - RC configuration files
+- `**/*.config.{js,ts}` - Config files
+- `**/tsconfig*.json` - TypeScript configs
+
+# Strategy for Exploring Codebases
+
+1. Start with a broad search to understand structure:
+   [glob pattern="*" path="/home/user/project"]  # Top-level files
+   
+2. Find the main source directory:
+   [glob pattern="src/**/*.py" path="/home/user/project"]
+   or
+   [glob pattern="lib/**/*.rb" path="/home/user/project"]
+
+3. Locate entry points:
+   [glob pattern="**/main.py" path="/home/user/project"]
+   [glob pattern="**/index.{js,ts}" path="/home/user/project"]
+
+4. Find tests to understand expected behavior:
+   [glob pattern="**/test*/**/*.py" path="/home/user/project"]
+
+Common mistakes to avoid:
+- DO NOT use bash find command - use this tool instead
+- DO NOT use `ls` via bash - use this tool for file discovery
+- DO NOT forget the `**` for recursive searches
+- DO NOT search without narrowing path in huge monorepos

@@ -16,7 +16,7 @@ An AI coding agent built with Python + Rust. Features a TUI interface, multi-pro
 - [x] Agent loop with tool execution
 - [x] Command palette
 - [x] Sidebar with session list
-- [x] **Tools**: Read, Write, Edit, Bash, Glob, Grep, Web
+- [x] **Tools**: Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Diagnostics
 
 ### To Be Implemented
 
@@ -44,7 +44,7 @@ An AI coding agent built with Python + Rust. Features a TUI interface, multi-pro
 - [ ] Thread search & cross-thread context
 - [ ] Auto todo planning & tracking during tasks
 - [ ] File citations with clickable links
-- [ ] Web page reading with objective extraction
+- [x] Web page reading (WebFetch tool)
 - [x] Parallel tool execution optimization
 
 ---

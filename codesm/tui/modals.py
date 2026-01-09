@@ -3,9 +3,11 @@
 from textual.app import ComposeResult
 from textual.screen import ModalScreen
 from textual.containers import Vertical, Horizontal, VerticalScroll
-from textual.widgets import Static, Input, Label
+from textual.widgets import Static, Input, Label, Button
 from textual.binding import Binding
 from textual import events
+
+from codesm.permission import PermissionRequest, PermissionResponse
 
 
 MODELS_BY_PROVIDER = {
@@ -999,3 +1001,118 @@ class APIKeyInputModal(ModalScreen):
 
     def action_dismiss_modal(self):
         self.dismiss(None)
+
+
+class PermissionModal(ModalScreen):
+    """Modal for requesting user permission before executing sensitive commands."""
+
+    CSS = """
+    PermissionModal {
+        align: center middle;
+        background: rgba(0, 0, 0, 0.7);
+    }
+
+    #permission-container {
+        width: 80;
+        height: auto;
+        max-height: 80%;
+        background: $surface;
+        border: tall $warning;
+        padding: 1 2;
+    }
+
+    #permission-header {
+        height: 1;
+        width: 100%;
+        margin-bottom: 1;
+    }
+
+    #permission-title {
+        text-style: bold;
+        color: $warning;
+        width: 1fr;
+    }
+
+    #permission-type {
+        width: auto;
+        color: $text-muted;
+    }
+
+    #permission-description {
+        margin: 1 0;
+        padding: 1;
+        background: $panel;
+    }
+
+    #command-display {
+        margin: 1 0;
+        padding: 1;
+        background: $background;
+        color: $text;
+    }
+
+    #button-row {
+        height: 3;
+        margin-top: 1;
+        align: center middle;
+    }
+
+    #button-row Button {
+        margin: 0 1;
+        min-width: 16;
+    }
+
+    #hint-row {
+        height: 1;
+        margin-top: 1;
+        color: $text-muted;
+        text-align: center;
+    }
+    """
+
+    BINDINGS = [
+        Binding("y", "allow_once", "Allow Once", show=True),
+        Binding("a", "allow_always", "Allow Always", show=True),
+        Binding("n", "deny", "Deny", show=True),
+        Binding("escape", "deny", "Deny", show=False),
+    ]
+
+    def __init__(self, request: PermissionRequest):
+        super().__init__()
+        self.request = request
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="permission-container"):
+            with Horizontal(id="permission-header"):
+                yield Static(f"⚠️  {self.request.title}", id="permission-title")
+                yield Static(f"[{self.request.type}]", id="permission-type")
+            
+            yield Static(self.request.description, id="permission-description")
+            yield Static(f"Command: {self.request.command}", id="command-display")
+            
+            with Horizontal(id="button-row"):
+                yield Button("Allow Once (y)", id="btn-allow-once", variant="success")
+                yield Button("Allow Always (a)", id="btn-allow-always", variant="primary")
+                yield Button("Deny (n)", id="btn-deny", variant="error")
+            
+            yield Static(
+                "[y] allow once  [a] allow always  [n/esc] deny",
+                id="hint-row",
+            )
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-allow-once":
+            self.action_allow_once()
+        elif event.button.id == "btn-allow-always":
+            self.action_allow_always()
+        elif event.button.id == "btn-deny":
+            self.action_deny()
+
+    def action_allow_once(self):
+        self.dismiss(PermissionResponse.ALLOW_ONCE)
+
+    def action_allow_always(self):
+        self.dismiss(PermissionResponse.ALLOW_ALWAYS)
+
+    def action_deny(self):
+        self.dismiss(PermissionResponse.DENY)
