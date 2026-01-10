@@ -664,6 +664,7 @@ class CodesmApp(App):
                             "glob": "Finding files",
                             "webfetch": "Fetching from web",
                             "websearch": "Searching the web",
+                            "codesearch": "Semantic code search",
                         }
                         if hasattr(self, '_thinking_widget') and self._thinking_widget:
                             msg = tool_messages.get(chunk.name, f"Using {chunk.name}")

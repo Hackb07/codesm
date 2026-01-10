@@ -15,6 +15,7 @@ TOOL_ICONS = {
     "web": "%",
     "webfetch": "%",
     "websearch": "◈",
+    "codesearch": "⊛",
     "default": "⚙",
 }
 
@@ -28,6 +29,7 @@ TOOL_COLORS = {
     "web": "#8aadf4",
     "webfetch": "#8aadf4",
     "websearch": "#8aadf4",
+    "codesearch": "#ee99a0",
     "default": "#939ab7",
 }
 
@@ -130,6 +132,14 @@ class ToolCallWidget(Static):
             result = f'Web Search "{query}"'
             if num_results:
                 result += f" ({num_results} results)"
+            return result
+        
+        elif name == "codesearch":
+            query = args.get("query", "")
+            path = args.get("path", "")
+            result = f'Code Search "{query[:40]}{"..." if len(query) > 40 else ""}"'
+            if path:
+                result += f" in {self._short_path(path)}"
             return result
         
         else:

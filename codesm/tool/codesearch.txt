@@ -1,0 +1,61 @@
+Semantic code search - find code by meaning, not just exact matches.
+
+Unlike grep which matches literal patterns, codesearch understands the meaning of your query and finds semantically similar code.
+
+# Parameters
+
+- query: Natural language description of what you're looking for (required)
+- path: Directory to search in (optional, defaults to project root)
+- file_pattern: Glob pattern for files (optional, e.g., "*.py")
+- top_k: Number of results to return (optional, default: 5)
+
+# When to Use
+
+Use codesearch when:
+- Looking for code by functionality, not exact names
+- Finding implementations of a concept ("authentication logic", "data validation")
+- Discovering similar code patterns
+- Exploring unfamiliar codebases
+
+Use grep instead when:
+- Searching for exact variable/function names
+- Finding specific strings or patterns
+- Looking for TODO/FIXME comments
+
+# Examples
+
+Find authentication-related code:
+[codesearch query="user authentication and password validation"]
+
+Find file handling logic:
+[codesearch query="reading and writing files to disk"]
+
+Find error handling patterns:
+[codesearch query="exception handling and error reporting" file_pattern="*.py"]
+
+Find API endpoint definitions:
+[codesearch query="HTTP route handler for user registration" path="src/api"]
+
+Find database queries:
+[codesearch query="SQL query to fetch user by email" top_k=10]
+
+# How It Works
+
+1. Extracts code chunks (functions, classes, blocks) from files
+2. Generates semantic embeddings using a neural language model
+3. Compares your query embedding to all code embeddings
+4. Returns the most semantically similar code sections
+
+# Tips
+
+- Be descriptive: "function that validates email format" > "email"
+- Include domain terms: "JWT token verification middleware"
+- Specify what the code does, not what it's named
+- Use file_pattern to narrow search scope for faster results
+
+# Requirements
+
+Requires the sentence-transformers library:
+  pip install sentence-transformers
+
+First search may be slow as it builds the index. Subsequent searches are faster.

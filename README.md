@@ -16,13 +16,13 @@ An AI coding agent built with Python + Rust. Features a TUI interface, multi-pro
 - [x] Agent loop with tool execution
 - [x] Command palette
 - [x] Sidebar with session list
-- [x] **Tools**: Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Diagnostics
+- [x] **Tools**: Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Diagnostics, CodeSearch
 
 ### To Be Implemented
 
 #### Core Features (from opencode)
 - [X] LSP integration
-- [ ] Code search (semantic search)
+- [x] Code search (semantic search)
 - [ ] Multi-edit (batch file edits)
 - [ ] Patch tool
 - [ ] Task/sub-agent spawning

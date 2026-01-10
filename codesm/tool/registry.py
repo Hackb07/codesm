@@ -21,8 +21,9 @@ class ToolRegistry:
         from .webfetch import WebFetchTool
         from .websearch import WebSearchTool
         from .diagnostics import DiagnosticsTool
+        from .codesearch import CodeSearchTool
 
-        for tool_class in [ReadTool, WriteTool, EditTool, BashTool, GrepTool, GlobTool, WebFetchTool, WebSearchTool, DiagnosticsTool]:
+        for tool_class in [ReadTool, WriteTool, EditTool, BashTool, GrepTool, GlobTool, WebFetchTool, WebSearchTool, DiagnosticsTool, CodeSearchTool]:
             tool = tool_class()
             self._tools[tool.name] = tool
     
