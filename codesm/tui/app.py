@@ -768,6 +768,8 @@ class CodesmApp(App):
 
     def _display_session_messages(self, messages: list[dict]):
         """Display loaded session messages in the chat area"""
+        from .chat import styled_markdown
+        
         messages_container = self.query_one("#messages", Vertical)
         chat_container = self.query_one("#chat-container", VerticalScroll)
         
@@ -776,7 +778,16 @@ class CodesmApp(App):
             role = msg.get("role")
             content = msg.get("content", "")
             
-            if role and content:
+            if not role or not content:
+                continue
+            
+            if role == "tool_display":
+                # Render tool results with styled markdown (for diffs, etc.)
+                result_widget = Static(styled_markdown(content))
+                result_widget.styles.padding = (0, 2, 1, 4)
+                result_widget.styles.margin = (0, 0, 1, 0)
+                messages_container.mount(result_widget)
+            else:
                 msg_widget = ChatMessage(role, content)
                 messages_container.mount(msg_widget)
         

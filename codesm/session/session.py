@@ -113,10 +113,10 @@ class Session:
         return result
     
     def get_messages_for_display(self) -> list[dict]:
-        """Get messages formatted for display (user/assistant only)"""
+        """Get messages formatted for display (user/assistant/tool_display)"""
         return [
             m for m in self.messages 
-            if m.get("role") in ("user", "assistant") and m.get("content")
+            if m.get("role") in ("user", "assistant", "tool_display") and m.get("content")
         ]
     
     def set_title(self, title: str):
