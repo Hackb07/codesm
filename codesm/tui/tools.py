@@ -9,6 +9,7 @@ TOOL_ICONS = {
     "read": "→",
     "write": "←",
     "edit": "←",
+    "multiedit": "⇄",
     "bash": "#",
     "grep": "✓",
     "glob": "✓",
@@ -23,6 +24,7 @@ TOOL_COLORS = {
     "read": "#5dd9c1",
     "write": "#f5a97f",
     "edit": "#f5a97f",
+    "multiedit": "#eed49f",
     "bash": "#cad3f5",
     "grep": "#c6a0f6",
     "glob": "#c6a0f6",
@@ -98,7 +100,13 @@ class ToolCallWidget(Static):
         elif name == "edit":
             path = args.get("path", args.get("file_path", ""))
             return f"Edit {self._short_path(path)}"
-        
+
+        elif name == "multiedit":
+            path = args.get("path", "")
+            edits = args.get("edits", [])
+            num_edits = len(edits) if isinstance(edits, list) else 0
+            return f"MultiEdit {self._short_path(path)} ({num_edits} edit{'s' if num_edits != 1 else ''})"
+
         elif name == "bash":
             cmd = args.get("command", "")
             desc = args.get("description", "")
