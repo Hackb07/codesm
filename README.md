@@ -36,10 +36,39 @@ An AI coding agent built with Python + Rust. Features a TUI interface, multi-pro
 - [ ] Rust core performance 
 - [X] Web Search
 
-#### Smart Features (inspired by Amp)
-- [ ] Oracle - reasoning model advisor for planning, review, debugging
-- [ ] Finder - intelligent semantic code search agent
-- [ ] Librarian - codebase understanding agent (multi-repo analysis)
+#### Smart Multi-Model Architecture
+
+The system uses task-specialized models across three tiers:
+
+**Tier 1: Agent Modes** (Primary interaction)
+- [ ] **Smart Mode** - Claude Opus 4.5 for unconstrained, state-of-the-art reasoning
+- [ ] **Rush Mode** - Claude Haiku 4.5 for fast, cost-effective small tasks
+- [ ] Mode switching logic based on task complexity
+
+**Tier 2: Feature Models** (Low-latency UI/UX tasks)
+- [ ] **Tab Completion** - Custom fine-tuned model for autocomplete/next-action
+- [ ] **Code Review** - Gemini 3 Pro for bug detection and review assistance
+- [ ] **Titling** - Claude Haiku 4.5 for fast thread title generation
+- [ ] **Look At** - Gemini 3 Flash for image/PDF/media analysis
+
+**Tier 3: Specialized Subagents** (Background processing)
+- [ ] **Oracle** - GPT-5/o1 for complex reasoning, planning, debugging
+- [ ] **Finder/Search** - Gemini 3 Flash for high-speed codebase retrieval
+- [ ] **Librarian** - Claude Sonnet 4.5 for multi-repo research & external code
+
+**Workflow Management**
+- [ ] **Handoff System** - Gemini 2.5 Flash for context analysis & task continuation
+- [ ] **Topics/Indexing** - Gemini 2.5 Flash-Lite for thread categorization
+- [ ] **Task Router** - Route tasks based on reasoning depth vs speed tradeoff
+
+**Infrastructure**
+- [ ] Multi-provider model registry (Anthropic, OpenAI, Google)
+- [ ] Model selection logic per task type
+- [ ] Subagent spawning and orchestration
+- [ ] Context passing between agents
+- [ ] Cost/latency optimization layer
+
+#### Other Smart Features
 - [ ] Mermaid diagram generation
 - [ ] Thread search & cross-thread context
 - [ ] Auto todo planning & tracking during tasks

@@ -4,6 +4,7 @@ from typing import Dict, Type
 from .base import Provider
 from .anthropic import AnthropicProvider
 from .openai import OpenAIProvider
+from .openrouter import OpenRouterProvider
 
 
 class ModelRouter:
@@ -13,16 +14,38 @@ class ModelRouter:
     PROVIDERS: Dict[str, Type[Provider]] = {
         "anthropic": AnthropicProvider,
         "openai": OpenAIProvider,
+        "openrouter": OpenRouterProvider,
     }
 
-    # Common model aliases
+    # Common model aliases - can use OpenRouter for multi-model access
     MODEL_ALIASES = {
+        # Direct provider access
         "claude": "anthropic/claude-sonnet-4-5-20250929",
         "claude-sonnet": "anthropic/claude-sonnet-4-5-20250929",
         "claude-opus": "anthropic/claude-opus-4-5-20251101",
         "gpt-4": "openai/gpt-4-turbo",
         "gpt-4-turbo": "openai/gpt-4-turbo",
         "gpt-4o": "openai/gpt-4o",
+        
+        # OpenRouter aliases for multi-model orchestration
+        "or-claude-sonnet": "openrouter/anthropic/claude-sonnet-4",
+        "or-claude-opus": "openrouter/anthropic/claude-opus-4",
+        "or-claude-haiku": "openrouter/anthropic/claude-3.5-haiku",
+        "or-gpt-4o": "openrouter/openai/gpt-4o",
+        "or-gpt-4o-mini": "openrouter/openai/gpt-4o-mini",
+        "or-o1": "openrouter/openai/o1",
+        "or-o1-mini": "openrouter/openai/o1-mini",
+        "or-gemini-flash": "openrouter/google/gemini-flash-1.5",
+        "or-gemini-pro": "openrouter/google/gemini-pro-1.5",
+        "or-deepseek": "openrouter/deepseek/deepseek-chat",
+        "or-llama": "openrouter/meta-llama/llama-3.1-70b-instruct",
+        
+        # Task-specific aliases (for subagent routing)
+        "smart": "openrouter/anthropic/claude-sonnet-4",
+        "rush": "openrouter/anthropic/claude-3.5-haiku",
+        "oracle": "openrouter/openai/o1-mini",
+        "search": "openrouter/google/gemini-flash-1.5",
+        "review": "openrouter/google/gemini-pro-1.5",
     }
 
     @classmethod

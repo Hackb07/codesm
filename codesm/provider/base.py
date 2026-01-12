@@ -30,7 +30,13 @@ class Provider(ABC):
 
 
 def get_provider(model: str) -> Provider:
-    """Get a provider instance from a model string like 'anthropic/claude-sonnet-4'"""
+    """Get a provider instance from a model string like 'anthropic/claude-sonnet-4'
+    
+    Supports:
+        - anthropic/model-name
+        - openai/model-name
+        - openrouter/provider/model-name (e.g., openrouter/anthropic/claude-sonnet-4)
+    """
     if "/" not in model:
         # Default to anthropic
         provider_id = "anthropic"
@@ -44,5 +50,9 @@ def get_provider(model: str) -> Provider:
     elif provider_id == "openai":
         from .openai import OpenAIProvider
         return OpenAIProvider(model_id)
+    elif provider_id == "openrouter":
+        from .openrouter import OpenRouterProvider
+        # model_id here is "anthropic/claude-sonnet-4" or similar
+        return OpenRouterProvider(model_id)
     else:
-        raise ValueError(f"Unknown provider: {provider_id}. Supported: anthropic, openai")
+        raise ValueError(f"Unknown provider: {provider_id}. Supported: anthropic, openai, openrouter")

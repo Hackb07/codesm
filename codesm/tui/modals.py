@@ -39,7 +39,7 @@ PROVIDERS = {
         {"id": "github-copilot", "name": "GitHub Copilot", "hint": ""},
         {"id": "openai", "name": "OpenAI", "hint": ""},
         {"id": "google", "name": "Google", "hint": ""},
-        {"id": "openrouter", "name": "OpenRouter", "hint": ""},
+        {"id": "openrouter", "name": "OpenRouter", "hint": "Multi-model access"},
     ],
     "Other": [
         {"id": "ollama", "name": "Ollama", "hint": "Local models"},

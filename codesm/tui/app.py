@@ -543,6 +543,9 @@ class CodesmApp(App):
             elif result == "openai":
                 self._pending_provider = "openai"
                 self.push_screen(APIKeyInputModal("openai"), self._on_api_key_entered)
+            elif result == "openrouter":
+                self._pending_provider = "openrouter"
+                self.push_screen(APIKeyInputModal("openrouter"), self._on_api_key_entered)
             else:
                 self.notify(f"Selected provider: {result} (coming soon)")
                 self._get_active_input().focus()
@@ -579,6 +582,7 @@ class CodesmApp(App):
                 "openai": "openai/gpt-4o",
                 "anthropic": "anthropic/claude-sonnet-4-20250514",
                 "google": "google/gemini-2.0-flash",
+                "openrouter": "openrouter/anthropic/claude-sonnet-4",
             }
 
             if provider in default_models:
