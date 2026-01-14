@@ -4,6 +4,7 @@ from pathlib import Path
 import logging
 import traceback
 from textual.app import App, ComposeResult
+from textual.worker import Worker, WorkerState
 
 from textual.containers import Container, Horizontal, Vertical, Center, VerticalScroll
 from textual.widgets import Footer, Input, Static, RichLog, Markdown
@@ -272,8 +273,10 @@ class CodesmApp(App):
     """
 
     BINDINGS = [
-        Binding("ctrl+c", "quit", "Quit", show=True),
-        Binding("ctrl+n", "new_session", "New Session", show=True),
+        Binding("ctrl+c", "quit", "Quit", show=True, priority=True),
+        Binding("ctrl+z", "cancel_or_quit", "Cancel/Quit", show=False, priority=True),
+        Binding("escape", "cancel_chat", "Cancel", show=False, priority=True),
+        Binding("ctrl+n", "new_session", "New Session", show=True, priority=True),
         Binding("ctrl+l", "clear", "Clear", show=True),
         Binding("ctrl+a", "connect_provider", "Connect Provider", show=True),
         Binding("ctrl+t", "toggle_theme", "Theme", show=True),
@@ -295,6 +298,8 @@ class CodesmApp(App):
         self._total_tokens = 0
         self._total_cost = 0.0
         self._pending_permission_requests: dict[str, PermissionRequest] = {}
+        self._chat_worker: Worker | None = None
+        self._cancel_requested = False
         
         # Set up permission callback
         permission_manager = get_permission_manager()
@@ -638,9 +643,22 @@ class CodesmApp(App):
 
         logger.info("Mounted user message")
 
-        # Process chat
+        # Run chat in a worker so keybindings remain responsive
+        self._cancel_requested = False
+        self._chat_worker = self.run_worker(
+            self._process_chat(message),
+            name="chat_worker",
+            exclusive=True,
+        )
+
+    async def _process_chat(self, message: str):
+        """Process chat in background worker"""
         import time
         start_time = time.time()
+        
+        messages_container = self.query_one("#messages", Vertical)
+        chat_container = self.query_one("#chat-container", VerticalScroll)
+        chat_input = self.query_one("#chat-message-input", Input)
         
         try:
             logger.info(f"Processing message: {message[:50]}")
@@ -651,6 +669,11 @@ class CodesmApp(App):
             tools_used: list[str] = []
 
             async for chunk in self.agent.chat(message):
+                # Check if cancel was requested
+                if self._cancel_requested:
+                    logger.info("Chat cancelled by user")
+                    break
+                    
                 if hasattr(chunk, 'type'):
                     if chunk.type == "text":
                         response_text += chunk.content
@@ -682,8 +705,8 @@ class CodesmApp(App):
                         tool_widgets[chunk.id] = tool_widget
                         if chunk.name not in tools_used:
                             tools_used.append(chunk.name)
-                        messages_container.mount(tool_widget)
-                        self.call_later(lambda: chat_container.scroll_end(animate=False))
+                        self.call_from_thread(messages_container.mount, tool_widget)
+                        self.call_from_thread(lambda: chat_container.scroll_end(animate=False))
                     elif chunk.type == "tool_result":
                         logger.debug(f"Tool result for {chunk.name}: {chunk.content[:50] if chunk.content else 'empty'}...")
                         if chunk.id in tool_widgets:
@@ -697,15 +720,15 @@ class CodesmApp(App):
                                 result_msg = Static(styled_markdown(chunk.content))
                                 result_msg.styles.padding = (0, 2, 1, 4)
                                 result_msg.styles.margin = (0, 0, 1, 0)
-                                messages_container.mount(result_msg)
-                                self.call_later(lambda: chat_container.scroll_end(animate=False))
+                                self.call_from_thread(messages_container.mount, result_msg)
+                                self.call_from_thread(lambda: chat_container.scroll_end(animate=False))
                             elif chunk.name == "todo":
                                 # Parse todo list from result and display nicely
                                 todos = self._parse_todo_result(chunk.content)
                                 if todos:
                                     todo_widget = TodoListWidget(todos)
-                                    messages_container.mount(todo_widget)
-                                    self.call_later(lambda: chat_container.scroll_end(animate=False))
+                                    self.call_from_thread(messages_container.mount, todo_widget)
+                                    self.call_from_thread(lambda: chat_container.scroll_end(animate=False))
                 else:
                     response_text += str(chunk)
 
@@ -715,18 +738,18 @@ class CodesmApp(App):
             if response_text:
                 logger.info(f"Got response, length: {len(response_text)}")
                 assistant_msg = ChatMessage("assistant", response_text, tools_used=tools_used)
-                messages_container.mount(assistant_msg)
+                self.call_from_thread(messages_container.mount, assistant_msg)
                 
                 # Update sidebar with token/cost estimates and session title
                 self._update_context_info(message, response_text)
                 self._update_sidebar_title()
-            else:
+            elif not self._cancel_requested:
                 logger.warning("No response received")
                 error_msg = ChatMessage("assistant", "No response received")
-                messages_container.mount(error_msg)
+                self.call_from_thread(messages_container.mount, error_msg)
 
             # Scroll to bottom
-            self.call_later(lambda: chat_container.scroll_end(animate=False))
+            self.call_from_thread(lambda: chat_container.scroll_end(animate=False))
 
             logger.info(f"Messages container now has {len(messages_container.children)} children")
 
@@ -736,11 +759,11 @@ class CodesmApp(App):
             # Add error message
             error_msg = str(e)
             error_widget = ChatMessage("assistant", f"Error: {error_msg}")
-            messages_container.mount(error_widget)
+            self.call_from_thread(messages_container.mount, error_widget)
 
             if "credentials" in error_msg.lower() or "api" in error_msg.lower():
                 hint = ChatMessage("assistant", "Try running /connect to set up your API key")
-                messages_container.mount(hint)
+                self.call_from_thread(messages_container.mount, hint)
 
             self.notify(f"Error: {error_msg[:80]}")
 
@@ -749,6 +772,7 @@ class CodesmApp(App):
             self._set_processing_state(False)
             chat_input.disabled = False
             chat_input.focus()
+            self._chat_worker = None
 
     def _set_processing_state(self, processing: bool, message: str = ""):
         """Update UI to show processing state with animated thinking indicator"""
@@ -995,6 +1019,20 @@ class CodesmApp(App):
             ]
         
         return []
+
+    def action_cancel_chat(self):
+        """Cancel the current chat processing"""
+        if self._chat_worker and self._chat_worker.is_running:
+            self._cancel_requested = True
+            self.notify("Cancelling...")
+            logger.info("Cancel requested by user")
+
+    def action_cancel_or_quit(self):
+        """Cancel chat if running, otherwise quit"""
+        if self._chat_worker and self._chat_worker.is_running:
+            self.action_cancel_chat()
+        else:
+            self.exit()
 
     def action_toggle_theme(self):
         """Toggle between themes"""

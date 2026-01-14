@@ -1,0 +1,31 @@
+List directory contents as a tree structure.
+
+Use this tool to:
+- Understand project layout and structure
+- Find files and subdirectories
+- Navigate unfamiliar codebases
+
+The output shows directories with trailing "/" and uses tree-style formatting.
+
+## Parameters
+
+- `path`: Directory to list (defaults to working directory)
+- `depth`: Maximum depth to traverse (default: 3)
+- `limit`: Maximum entries to show (default: 100)
+
+## Example Output
+
+```
+/home/user/project/
+├── src/
+│   ├── main.py
+│   ├── utils/
+│   │   ├── helpers.py
+│   │   └── config.py
+│   └── tests/
+│       └── test_main.py
+├── README.md
+└── pyproject.toml
+```
+
+Common directories like node_modules, .git, __pycache__, .venv are automatically ignored.

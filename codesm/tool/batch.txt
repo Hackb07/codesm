@@ -1,0 +1,31 @@
+Execute multiple tools in parallel for faster execution.
+
+Use this tool when you need to perform multiple independent operations simultaneously, such as:
+- Reading multiple files at once
+- Running multiple grep searches
+- Combining glob and read operations
+
+## Parameters
+
+- `tool_calls`: Array of tool calls (max 10), each with:
+  - `tool`: Name of the tool to execute
+  - `parameters`: Parameters for that tool
+
+## Example
+
+```json
+{
+  "tool_calls": [
+    {"tool": "read", "parameters": {"path": "/path/to/file1.py"}},
+    {"tool": "read", "parameters": {"path": "/path/to/file2.py"}},
+    {"tool": "grep", "parameters": {"pattern": "TODO", "path": "/project"}}
+  ]
+}
+```
+
+## Notes
+
+- Maximum 10 tool calls per batch
+- The `batch` tool cannot call itself (no recursion)
+- Results are truncated if too long
+- All calls execute in parallel for speed

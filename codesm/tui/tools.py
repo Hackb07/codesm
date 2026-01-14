@@ -34,6 +34,8 @@ TOOL_COLORS = {
     "websearch": "#8aadf4",
     "codesearch": "#ee99a0",
     "todo": "#eed49f",
+    "ls": "#a6da95",
+    "batch": "#f5bde6",
     "default": "#939ab7",
 }
 
@@ -176,6 +178,16 @@ class ToolCallWidget(Static):
             elif action == "clear_done":
                 return "Todo clearing completed"
             return f"Todo {action}"
+        
+        elif name == "ls":
+            path = args.get("path", ".")
+            return f"List {self._short_path(path)}"
+        
+        elif name == "batch":
+            calls = args.get("tool_calls", [])
+            tools = [c.get("tool", "?") for c in calls[:3]]
+            suffix = f"+{len(calls)-3}" if len(calls) > 3 else ""
+            return f"Batch [{', '.join(tools)}{suffix}]"
         
         else:
             return f"{name} {self._format_args(args)}"

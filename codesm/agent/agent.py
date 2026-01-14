@@ -41,7 +41,7 @@ class Agent:
     
     async def chat(self, message: str) -> AsyncIterator[str]:
         """Send a message and stream the response"""
-        # Add user message to session
+        # Add user message to session (saved immediately)
         self.session.add_message(role="user", content=message)
         
         # Get conversation history
@@ -56,7 +56,6 @@ class Agent:
         
         # Run ReAct loop
         full_response = ""
-        tool_results = []
         async for chunk in self.react_loop.execute(
             provider=self.provider,
             system_prompt=SYSTEM_PROMPT.format(cwd=self.directory),
@@ -70,23 +69,15 @@ class Agent:
             elif chunk.type == "tool_call":
                 yield chunk
             elif chunk.type == "tool_result":
-                # Save tool results for display purposes
-                tool_results.append({
-                    "id": chunk.id,
-                    "name": chunk.name,
-                    "content": chunk.content,
-                })
+                # Save tool results immediately for session recovery
+                if chunk.name in ["edit", "write", "bash", "grep", "glob", "todo"]:
+                    self.session.add_message(
+                        role="tool_display",
+                        content=chunk.content,
+                        tool_name=chunk.name,
+                        tool_call_id=chunk.id,
+                    )
                 yield chunk
-        
-        # Save tool results to session (for display when session is reloaded)
-        for result in tool_results:
-            if result["name"] in ["edit", "write", "bash", "grep", "glob"]:
-                self.session.add_message(
-                    role="tool_display",
-                    content=result["content"],
-                    tool_name=result["name"],
-                    tool_call_id=result["id"],
-                )
         
         # Save final assistant response
         if full_response:
