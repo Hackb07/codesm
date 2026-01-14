@@ -1,13 +1,21 @@
 """Tool registry"""
 
 import asyncio
-from typing import Any
+import logging
+from typing import Any, TYPE_CHECKING
+
 from .base import Tool
+
+if TYPE_CHECKING:
+    from ..mcp.manager import MCPManager
+
+logger = logging.getLogger(__name__)
 
 
 class ToolRegistry:
     def __init__(self):
         self._tools: dict[str, Tool] = {}
+        self._mcp_manager: "MCPManager | None" = None
         self._register_defaults()
     
     def _register_defaults(self):
@@ -35,13 +43,39 @@ class ToolRegistry:
         """Register a tool"""
         self._tools[tool.name] = tool
     
+    def set_mcp_manager(self, manager: "MCPManager", workspace_dir=None):
+        """Set the MCP manager for MCP tool integration"""
+        self._mcp_manager = manager
+        
+        # Register code execution tools for efficient MCP usage
+        from .mcp_execute import MCPExecuteTool, MCPToolsListTool, MCPSkillsTool
+        
+        mcp_execute = MCPExecuteTool(mcp_manager=manager, workspace_dir=workspace_dir)
+        mcp_tools = MCPToolsListTool(mcp_manager=manager)
+        mcp_skills = MCPSkillsTool(workspace_dir=workspace_dir)
+        
+        self._tools[mcp_execute.name] = mcp_execute
+        self._tools[mcp_tools.name] = mcp_tools
+        self._tools[mcp_skills.name] = mcp_skills
+        
+        logger.info("Registered MCP code execution tools: mcp_execute, mcp_tools, mcp_skills")
+    
     def get(self, name: str) -> Tool | None:
-        """Get a tool by name"""
-        return self._tools.get(name)
+        """Get a tool by name (includes MCP tools)"""
+        # Check built-in tools first
+        tool = self._tools.get(name)
+        if tool:
+            return tool
+        
+        # Check MCP tools
+        if self._mcp_manager:
+            return self._mcp_manager.get_tool(name)
+        
+        return None
     
     def get_schemas(self) -> list[dict]:
-        """Get all tool schemas for LLM"""
-        return [
+        """Get all tool schemas for LLM (includes MCP tools)"""
+        schemas = [
             {
                 "name": tool.name,
                 "description": tool.description,
@@ -49,10 +83,27 @@ class ToolRegistry:
             }
             for tool in self._tools.values()
         ]
+        
+        # Add MCP tool schemas
+        if self._mcp_manager:
+            for tool in self._mcp_manager.get_tools():
+                schemas.append({
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": tool.get_parameters_schema(),
+                })
+        
+        return schemas
     
     async def execute(self, name: str, args: dict, context: dict) -> str:
-        """Execute a tool by name"""
+        """Execute a tool by name (includes MCP tools)"""
+        # Try built-in tools first
         tool = self._tools.get(name)
+        
+        # Try MCP tools if not found
+        if not tool and self._mcp_manager:
+            tool = self._mcp_manager.get_tool(name)
+        
         if not tool:
             return f"Error: Unknown tool '{name}'"
         

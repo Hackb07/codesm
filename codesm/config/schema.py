@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, Field
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 
 class ProviderConfig(BaseModel):
@@ -36,11 +36,27 @@ class SessionConfig(BaseModel):
     compact_threshold: float = 0.8
 
 
+class MCPServerConfig(BaseModel):
+    """Configuration for an MCP server"""
+    command: str
+    args: list[str] = Field(default_factory=list)
+    env: dict[str, str] = Field(default_factory=dict)
+    transport: Literal["stdio", "sse", "streamable-http"] = "stdio"
+    url: str | None = None
+
+
+class MCPConfig(BaseModel):
+    """MCP (Model Context Protocol) configuration"""
+    enabled: bool = True
+    servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
+
+
 class Config(BaseModel):
     """Main configuration"""
     model: ModelConfig = Field(default_factory=ModelConfig)
     tools: ToolConfig = Field(default_factory=ToolConfig)
     session: SessionConfig = Field(default_factory=SessionConfig)
+    mcp: MCPConfig = Field(default_factory=MCPConfig)
     working_directory: Path = Field(default_factory=Path.cwd)
 
     class Config:

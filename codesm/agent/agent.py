@@ -1,5 +1,6 @@
 """Main agent - orchestrates LLM calls and tool execution"""
 
+import logging
 from pathlib import Path
 from typing import AsyncIterator
 
@@ -8,6 +9,9 @@ from codesm.tool.registry import ToolRegistry
 from codesm.session.session import Session
 from codesm.agent.prompt import SYSTEM_PROMPT
 from codesm.agent.loop import ReActLoop
+from codesm.mcp import MCPManager, load_mcp_config
+
+logger = logging.getLogger(__name__)
 
 
 class Agent:
@@ -18,7 +22,8 @@ class Agent:
         directory: Path,
         model: str,
         session: Session | None = None,
-        max_iterations: int = 0  # 0 = unlimited
+        max_iterations: int = 0,  # 0 = unlimited
+        mcp_config_path: Path | str | None = None,
     ):
         self.directory = Path(directory).resolve()
         self._model = model
@@ -27,6 +32,11 @@ class Agent:
         self.tools = ToolRegistry()
         self.provider = get_provider(self._model)
         self.react_loop = ReActLoop(max_iterations=self.max_iterations)
+        
+        # MCP support - will be initialized on first chat
+        self._mcp_manager: MCPManager | None = None
+        self._mcp_config_path = mcp_config_path
+        self._mcp_initialized = False
 
     @property
     def model(self) -> str:
@@ -39,8 +49,50 @@ class Agent:
         self._model = value
         self.provider = get_provider(value)
     
+    async def _init_mcp(self):
+        """Initialize MCP servers if configured"""
+        if self._mcp_initialized:
+            return
+        
+        self._mcp_initialized = True
+        
+        # Load MCP config - search in working directory first
+        config_path = self._mcp_config_path
+        if not config_path:
+            # Try common locations relative to working directory
+            for candidate in [
+                self.directory / "mcp-servers.json",
+                self.directory / ".mcp" / "servers.json",
+                self.directory / "codesm.json",
+            ]:
+                if candidate.exists():
+                    config_path = candidate
+                    break
+        
+        servers = load_mcp_config(config_path)
+        if not servers:
+            logger.debug(f"No MCP servers configured (searched {config_path or 'default locations'})")
+            return
+        
+        # Create manager and connect
+        self._mcp_manager = MCPManager()
+        for name, config in servers.items():
+            self._mcp_manager.add_server(config)
+        
+        logger.info(f"Connecting to {len(servers)} MCP servers...")
+        results = await self._mcp_manager.connect_all()
+        
+        connected = sum(1 for v in results.values() if v)
+        if connected > 0:
+            # Register MCP manager with tool registry (includes code execution tools)
+            self.tools.set_mcp_manager(self._mcp_manager, workspace_dir=self.directory)
+            logger.info(f"Connected to {connected} MCP servers, {len(self._mcp_manager.get_tools())} MCP tools + code execution available")
+    
     async def chat(self, message: str) -> AsyncIterator[str]:
         """Send a message and stream the response"""
+        # Initialize MCP on first chat
+        await self._init_mcp()
+        
         # Add user message to session (saved immediately)
         self.session.add_message(role="user", content=message)
         
@@ -86,3 +138,16 @@ class Agent:
     def new_session(self):
         """Start a new session"""
         self.session = Session.create(self.directory)
+    
+    async def cleanup(self):
+        """Cleanup resources (disconnect MCP servers, etc.)"""
+        if self._mcp_manager:
+            await self._mcp_manager.disconnect_all()
+            self._mcp_manager = None
+            self._mcp_initialized = False
+    
+    def get_mcp_tools(self) -> list[dict]:
+        """Get list of available MCP tools"""
+        if self._mcp_manager:
+            return self._mcp_manager.list_all_tools()
+        return []

@@ -705,8 +705,8 @@ class CodesmApp(App):
                         tool_widgets[chunk.id] = tool_widget
                         if chunk.name not in tools_used:
                             tools_used.append(chunk.name)
-                        self.call_from_thread(messages_container.mount, tool_widget)
-                        self.call_from_thread(lambda: chat_container.scroll_end(animate=False))
+                        await messages_container.mount(tool_widget)
+                        chat_container.scroll_end(animate=False)
                     elif chunk.type == "tool_result":
                         logger.debug(f"Tool result for {chunk.name}: {chunk.content[:50] if chunk.content else 'empty'}...")
                         if chunk.id in tool_widgets:
@@ -715,20 +715,20 @@ class CodesmApp(App):
                             tool_widgets[chunk.id].mark_completed(result_summary=result_summary)
 
                             # Only show full result for edit/write/bash (not glob/grep)
-                            if chunk.name in ["edit", "write", "bash"]:
+                            if chunk.name in ["edit", "write", "bash", "mcp_execute"]:
                                 from .chat import styled_markdown
                                 result_msg = Static(styled_markdown(chunk.content))
                                 result_msg.styles.padding = (0, 2, 1, 4)
                                 result_msg.styles.margin = (0, 0, 1, 0)
-                                self.call_from_thread(messages_container.mount, result_msg)
-                                self.call_from_thread(lambda: chat_container.scroll_end(animate=False))
+                                await messages_container.mount(result_msg)
+                                chat_container.scroll_end(animate=False)
                             elif chunk.name == "todo":
                                 # Parse todo list from result and display nicely
                                 todos = self._parse_todo_result(chunk.content)
                                 if todos:
                                     todo_widget = TodoListWidget(todos)
-                                    self.call_from_thread(messages_container.mount, todo_widget)
-                                    self.call_from_thread(lambda: chat_container.scroll_end(animate=False))
+                                    await messages_container.mount(todo_widget)
+                                    chat_container.scroll_end(animate=False)
                 else:
                     response_text += str(chunk)
 
@@ -738,7 +738,7 @@ class CodesmApp(App):
             if response_text:
                 logger.info(f"Got response, length: {len(response_text)}")
                 assistant_msg = ChatMessage("assistant", response_text, tools_used=tools_used)
-                self.call_from_thread(messages_container.mount, assistant_msg)
+                await messages_container.mount(assistant_msg)
                 
                 # Update sidebar with token/cost estimates and session title
                 self._update_context_info(message, response_text)
@@ -746,10 +746,10 @@ class CodesmApp(App):
             elif not self._cancel_requested:
                 logger.warning("No response received")
                 error_msg = ChatMessage("assistant", "No response received")
-                self.call_from_thread(messages_container.mount, error_msg)
+                await messages_container.mount(error_msg)
 
             # Scroll to bottom
-            self.call_from_thread(lambda: chat_container.scroll_end(animate=False))
+            chat_container.scroll_end(animate=False)
 
             logger.info(f"Messages container now has {len(messages_container.children)} children")
 
@@ -759,11 +759,11 @@ class CodesmApp(App):
             # Add error message
             error_msg = str(e)
             error_widget = ChatMessage("assistant", f"Error: {error_msg}")
-            self.call_from_thread(messages_container.mount, error_widget)
+            await messages_container.mount(error_widget)
 
             if "credentials" in error_msg.lower() or "api" in error_msg.lower():
                 hint = ChatMessage("assistant", "Try running /connect to set up your API key")
-                self.call_from_thread(messages_container.mount, hint)
+                await messages_container.mount(hint)
 
             self.notify(f"Error: {error_msg[:80]}")
 
