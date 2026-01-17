@@ -7,7 +7,7 @@ from textual.app import App, ComposeResult
 from textual.worker import Worker, WorkerState
 
 from textual.containers import Container, Horizontal, Vertical, Center, VerticalScroll
-from textual.widgets import Footer, Input, Static, RichLog, Markdown
+from textual.widgets import Input, Static, RichLog, Markdown
 from textual.binding import Binding
 
 from .themes import THEMES, get_next_theme
@@ -211,25 +211,10 @@ class CodesmApp(App):
         border: none;
     }
 
-    #chat-status-bar {
-        height: 1;
-        padding: 0 1;
-    }
-
-    #chat-agent-indicator {
-        width: auto;
-        color: $secondary;
-        text-style: bold;
-    }
-
-    #chat-model-indicator {
-        width: auto;
-        color: $text-muted;
-    }
-
     #chat-hint-bar {
         height: 1;
-        margin-top: 1;
+        margin-top: 0;
+        padding: 0 1;
     }
 
     #chat-status-text {
@@ -239,6 +224,28 @@ class CodesmApp(App):
     #chat-hints {
         width: auto;
         text-align: right;
+        color: $text-muted;
+    }
+
+    /* Custom footer */
+    #custom-footer {
+        dock: bottom;
+        height: 1;
+        width: 100%;
+        background: $surface;
+        padding: 0 1;
+    }
+
+    #footer-mode-model {
+        width: auto;
+    }
+
+    #footer-spacer {
+        width: 1fr;
+    }
+
+    #footer-hints {
+        width: auto;
         color: $text-muted;
     }
 
@@ -278,11 +285,11 @@ class CodesmApp(App):
         Binding("escape", "cancel_chat", "Cancel", show=False, priority=True),
         Binding("ctrl+n", "new_session", "New Session", show=True, priority=True),
         Binding("ctrl+l", "clear", "Clear", show=True),
-        Binding("ctrl+a", "connect_provider", "Connect Provider", show=True),
+        Binding("ctrl+a", "connect_provider", "Connect Provider", show=False),
         Binding("ctrl+t", "toggle_theme", "Theme", show=True),
         Binding("ctrl+p", "show_command_palette", "Commands", show=True),
         Binding("ctrl+b", "toggle_sidebar", "Sidebar", show=False),
-        Binding("tab", "toggle_mode", "Mode", show=False),
+        Binding("tab", "toggle_mode", "Mode", show=True),
     ]
 
     def __init__(self, directory: Path, model: str, session_id: str | None = None):
@@ -338,18 +345,18 @@ class CodesmApp(App):
                                 placeholder="Ask anything...",
                                 id="chat-message-input"
                             )
-                            with Horizontal(id="chat-status-bar"):
-                                yield Static("[bold #5dd9c1]Smart[/]", id="chat-agent-indicator")
-                                yield Static("", id="chat-spacer")
-                                yield Static(f"[dim]{self._short_model_name()}[/dim]", id="chat-model-indicator")
                         
                         with Horizontal(id="chat-hint-bar"):
                             yield Static("", id="chat-status-text")
-                            yield Static("[dim]tab[/dim] switch mode  [dim]ctrl+p[/dim] commands", id="chat-hints")
+                            yield Static("[dim]esc[/dim] to interrupt", id="chat-hints")
 
             yield ContextSidebar(id="context-sidebar", classes="hidden")
 
-        yield Footer()
+        # Custom footer with mode indicator instead of default Footer
+        with Horizontal(id="custom-footer"):
+            yield Static("[bold #5dd9c1]Smart[/] · claude-sonnet-4-20250514", id="footer-mode-model")
+            yield Static("", id="footer-spacer")
+            yield Static("[dim]^c[/dim] quit  [dim]^n[/dim] new  [dim]^p[/dim] commands  [dim]tab[/dim] mode", id="footer-hints")
 
     def _short_model_name(self) -> str:
         """Get short display name for current model"""
@@ -881,7 +888,7 @@ class CodesmApp(App):
                     pass
                 
                 status_text.update("")
-                hints.update("[dim]tab[/dim] switch agent  [dim]ctrl+p[/dim] commands")
+                hints.update("[dim]tab[/dim] switch mode  [dim]ctrl+p[/dim] commands")
         except Exception:
             pass
 
@@ -1009,19 +1016,18 @@ class CodesmApp(App):
 
     def _update_model_display(self):
         """Update model display in UI"""
-        short_name = self._short_model_name()
         mode_display = self._get_mode_display()
         
         # Show the actual model being used (important for rush mode)
         actual_model = self.model.split("/")[-1] if "/" in self.model else self.model
+        display_text = f"{mode_display} · {actual_model}"
 
         # Update welcome screen
         self.query_one("#model-indicator", Static).update(f"{mode_display}  {actual_model}")
         
-        # Update chat screen
+        # Update custom footer
         try:
-            self.query_one("#chat-agent-indicator", Static).update(mode_display)
-            self.query_one("#chat-model-indicator", Static).update(f"[dim]{actual_model}[/dim]")
+            self.query_one("#footer-mode-model", Static).update(display_text)
         except Exception:
             pass
 
