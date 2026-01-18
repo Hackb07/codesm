@@ -11,6 +11,7 @@ from codesm.agent.prompt import SYSTEM_PROMPT, build_system_prompt, format_avail
 from codesm.agent.loop import ReActLoop
 from codesm.mcp import MCPManager, load_mcp_config
 from codesm.skills import SkillManager
+from codesm.rules import RulesDiscovery
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,9 @@ class Agent:
             workspace_dir=self.directory,
             auto_triggers_enabled=True,
         )
+        
+        # Rules discovery (AGENTS.md, CLAUDE.md, etc.)
+        self.rules = RulesDiscovery(workspace=self.directory)
 
     @property
     def model(self) -> str:
@@ -111,13 +115,15 @@ class Agent:
         if auto_loaded:
             logger.info(f"Auto-loaded skills: {auto_loaded}")
         
-        # Build system prompt with skills
+        # Build system prompt with skills and rules
         skills_block = self.skills.render_active_for_prompt()
         available_skills_summary = format_available_skills(self.skills.list())
+        custom_rules = self.rules.get_combined_rules()
         system_prompt = build_system_prompt(
             cwd=str(self.directory),
             skills_block=skills_block,
             available_skills_summary=available_skills_summary,
+            custom_rules=custom_rules,
         )
         
         # Build context for tools

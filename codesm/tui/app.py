@@ -518,7 +518,7 @@ class CodesmApp(App):
             mode_str = "Rush" if self._mode == "rush" else "Smart"
             self.notify(f"Mode: {mode_str} | Model: {self.model} | Dir: {self.directory}")
         elif cmd == "/init":
-            self.notify("AGENTS.md initialization (coming soon)")
+            self._run_init_command()
         elif cmd == "/agents":
             self.notify("Agent list (coming soon)")
         elif cmd == "/editor":
@@ -570,6 +570,30 @@ class CodesmApp(App):
         model_short = self.model.split("/")[-1] if "/" in self.model else self.model
         logger.info(f"Mode switched to {mode_name}, using model: {self.model}")
         self.notify(f"{mode_name}: {model_short}")
+
+    def _run_init_command(self):
+        """Initialize AGENTS.md for the current project"""
+        from codesm.rules import init_agents_md, save_agents_md
+        from pathlib import Path
+        
+        workspace = Path(self.directory)
+        agents_path = workspace / "AGENTS.md"
+        
+        if agents_path.exists():
+            self.notify(f"AGENTS.md already exists at {agents_path}")
+            return
+        
+        content, already_exists = init_agents_md(workspace)
+        
+        if already_exists:
+            self.notify("AGENTS.md already exists")
+            return
+        
+        saved_path = save_agents_md(workspace, content)
+        self.notify(f"Created {saved_path.name} - review and customize it")
+        
+        if self.agent:
+            self.agent.rules.refresh()
 
     def _on_session_selected(self, result: str | None):
         """Handle session selection"""

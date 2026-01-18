@@ -108,16 +108,22 @@ def build_system_prompt(
     cwd: str,
     skills_block: str = "",
     available_skills_summary: str = "",
+    custom_rules: str = "",
 ) -> str:
     """
-    Build the full system prompt with skills injected.
+    Build the full system prompt with skills and rules injected.
     
     Args:
         cwd: Current working directory
         skills_block: Rendered content of loaded skills
         available_skills_summary: Summary of available skills for the agent to know about
+        custom_rules: Custom rules from AGENTS.md / CLAUDE.md files
     """
     prompt = SYSTEM_PROMPT.format(cwd=cwd)
+    
+    # Add custom rules from AGENTS.md etc (highest priority - comes first)
+    if custom_rules:
+        prompt += f"\n\n# Project Rules\n\n{custom_rules}"
     
     # Add available skills summary if any
     if available_skills_summary:
