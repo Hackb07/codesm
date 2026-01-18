@@ -49,7 +49,7 @@ class TestSession:
         assert msg["tool_call_id"] == "call_123"
         assert msg["name"] == "read"
     
-    def test_get_messages_preserves_structure(self, temp_dir):
+    def test_get_messages_filters_tool_messages(self, temp_dir):
         from codesm.session.session import Session
         
         session = Session.create(temp_dir)
@@ -59,11 +59,13 @@ class TestSession:
             content="result",
             tool_call_id="call_123",
         )
+        session.add_message(role="assistant", content="Here's the result")
         
         messages = session.get_messages()
         
         assert len(messages) == 2
-        assert messages[1]["tool_call_id"] == "call_123"
+        assert messages[0]["role"] == "user"
+        assert messages[1]["role"] == "assistant"
     
     def test_get_messages_for_display(self, temp_dir):
         from codesm.session.session import Session

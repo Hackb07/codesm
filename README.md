@@ -75,7 +75,7 @@ codesm supports two agent modes for different task types:
 - [x] Todo tracking for agent
 - [x] MCP (Model Context Protocol) support
 - [x] Skill/plugin system
-- [ ] Snapshot/undo system
+- [x] Snapshot/undo system
 - [ ] Permission system
 - [ ] Web search tool improvements
 - [ ] Rust core performance

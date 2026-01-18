@@ -29,13 +29,16 @@ class WriteTool(Tool):
         content = args["content"]
         
         try:
-            # Check if file exists (for diff)
+            session = context.get("session")
+            pre_write_hash = None
+            if session:
+                pre_write_hash = await session.track_snapshot()
+            
             old_content = ""
             is_new_file = not path.exists()
             if not is_new_file:
                 old_content = path.read_text()
             
-            # Create parent directories if needed
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content)
             
@@ -58,10 +61,14 @@ class WriteTool(Tool):
                 removed = len(old_lines) - len(new_lines) if len(old_lines) > len(new_lines) else 0
                 result = f"**Write** {path.name} +{added} -{removed}\n\n{diff_output}"
             
-            # Get LSP diagnostics for the written file
             diagnostics_output = await self._get_diagnostics(str(path))
             if diagnostics_output:
                 result += f"\n\n{diagnostics_output}"
+            
+            if session and pre_write_hash:
+                patch = await session.get_file_changes(pre_write_hash)
+                if patch.get("files"):
+                    context["_last_patch"] = patch
             
             return result
         except Exception as e:

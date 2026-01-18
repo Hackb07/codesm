@@ -42,7 +42,11 @@ class EditTool(Tool):
             if old_content not in content:
                 return f"Error: Could not find the specified content to replace"
 
-            # Apply the edit (no permission for now, to match current behavior)
+            session = context.get("session")
+            pre_edit_hash = None
+            if session:
+                pre_edit_hash = await session.track_snapshot()
+
             updated = content.replace(old_content, new_content, 1)
 
             # Calculate lines added/removed/modified
@@ -74,6 +78,11 @@ class EditTool(Tool):
             diagnostics_output = await self._get_diagnostics(str(path))
             if diagnostics_output:
                 result += f"\n\n{diagnostics_output}"
+
+            if session and pre_edit_hash:
+                patch = await session.get_file_changes(pre_edit_hash)
+                if patch.get("files"):
+                    context["_last_patch"] = patch
 
             return result
         except Exception as e:

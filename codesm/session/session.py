@@ -4,10 +4,13 @@ import json
 from pathlib import Path
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional, TYPE_CHECKING
 
 from codesm.storage.storage import Storage
 from codesm.session.title import create_default_title, is_default_title, generate_title_sync
+
+if TYPE_CHECKING:
+    from codesm.snapshot import Snapshot
 
 
 @dataclass
@@ -21,6 +24,8 @@ class Session:
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
     _title_generated: bool = field(default=False, repr=False)
+    _snapshot: Optional["Snapshot"] = field(default=None, repr=False)
+    _current_snapshot_hash: Optional[str] = field(default=None, repr=False)
     
     @classmethod
     def create(cls, directory: Path, is_child: bool = False) -> "Session":
@@ -141,3 +146,47 @@ class Session:
             return True
         except Exception:
             return False
+    
+    def get_snapshot(self) -> "Snapshot":
+        """Get or create the snapshot tracker for this session"""
+        if self._snapshot is None:
+            from codesm.snapshot import Snapshot
+            self._snapshot = Snapshot(self.directory, project_id=self.id)
+        return self._snapshot
+    
+    async def track_snapshot(self) -> Optional[str]:
+        """Take a snapshot of current file state"""
+        snapshot = self.get_snapshot()
+        hash_val = await snapshot.track()
+        if hash_val:
+            self._current_snapshot_hash = hash_val
+        return hash_val
+    
+    async def get_file_changes(self, from_hash: Optional[str] = None) -> dict:
+        """Get files changed since a snapshot"""
+        if from_hash is None:
+            from_hash = self._current_snapshot_hash
+        if not from_hash:
+            return {"hash": "", "files": []}
+        
+        snapshot = self.get_snapshot()
+        patch = await snapshot.patch(from_hash)
+        return {"hash": patch.hash, "files": patch.files}
+    
+    def add_message_with_patch(self, role: str, content: str | None = None, 
+                                patch: Optional[dict] = None, **kwargs):
+        """Add a message and optionally record file patches"""
+        msg = {"role": role}
+        if content is not None:
+            msg["content"] = content
+        if patch and patch.get("files"):
+            msg["_patches"] = [patch]
+        msg.update(kwargs)
+        self.messages.append(msg)
+        
+        if role == "user" and content and not self._title_generated:
+            if is_default_title(self.title):
+                self.title = generate_title_sync(content)
+            self._title_generated = True
+        
+        self.save()

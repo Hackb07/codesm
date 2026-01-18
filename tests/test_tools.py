@@ -78,7 +78,7 @@ class TestWriteTool:
             "content": "Hello, world!",
         }, context)
         
-        assert "Successfully" in result
+        assert "**Write**" in result
         assert test_file.read_text() == "Hello, world!"
     
     @pytest.mark.asyncio
@@ -93,7 +93,7 @@ class TestWriteTool:
             "content": "nested content",
         }, context)
         
-        assert "Successfully" in result
+        assert "**Write**" in result
         assert test_file.exists()
 
 
@@ -112,7 +112,7 @@ class TestEditTool:
             "new_content": "Python",
         }, context)
         
-        assert "Successfully" in result
+        assert "**Edit**" in result
         assert test_file.read_text() == "Hello, Python!"
     
     @pytest.mark.asyncio
@@ -168,7 +168,8 @@ class TestToolRegistry:
         assert "bash" in tool_names
         assert "grep" in tool_names
         assert "glob" in tool_names
-        assert "web" in tool_names
+        assert "webfetch" in tool_names
+        assert "undo" in tool_names
     
     @pytest.mark.asyncio
     async def test_execute_unknown_tool(self):
