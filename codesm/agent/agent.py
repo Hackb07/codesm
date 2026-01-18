@@ -7,9 +7,10 @@ from typing import AsyncIterator
 from codesm.provider.base import get_provider, StreamChunk
 from codesm.tool.registry import ToolRegistry
 from codesm.session.session import Session
-from codesm.agent.prompt import SYSTEM_PROMPT
+from codesm.agent.prompt import SYSTEM_PROMPT, build_system_prompt, format_available_skills
 from codesm.agent.loop import ReActLoop
 from codesm.mcp import MCPManager, load_mcp_config
+from codesm.skills import SkillManager
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,12 @@ class Agent:
         self._mcp_manager: MCPManager | None = None
         self._mcp_config_path = mcp_config_path
         self._mcp_initialized = False
+        
+        # Skill system
+        self.skills = SkillManager(
+            workspace_dir=self.directory,
+            auto_triggers_enabled=True,
+        )
 
     @property
     def model(self) -> str:
@@ -99,6 +106,20 @@ class Agent:
         # Get conversation history
         messages = self.session.get_messages()
         
+        # Auto-load skills based on message triggers
+        auto_loaded = self.skills.auto_load_for_message(message)
+        if auto_loaded:
+            logger.info(f"Auto-loaded skills: {auto_loaded}")
+        
+        # Build system prompt with skills
+        skills_block = self.skills.render_active_for_prompt()
+        available_skills_summary = format_available_skills(self.skills.list())
+        system_prompt = build_system_prompt(
+            cwd=str(self.directory),
+            skills_block=skills_block,
+            available_skills_summary=available_skills_summary,
+        )
+        
         # Build context for tools
         context = {
             "session": self.session,
@@ -107,13 +128,14 @@ class Agent:
             "workspace_dir": str(self.directory),
             "tools": self.tools,
             "model": self._model,
+            "skills": self.skills,  # Add skills manager to context
         }
         
         # Run ReAct loop
         full_response = ""
         async for chunk in self.react_loop.execute(
             provider=self.provider,
-            system_prompt=SYSTEM_PROMPT.format(cwd=self.directory),
+            system_prompt=system_prompt,
             messages=messages,
             tools=self.tools,
             context=context,
@@ -141,6 +163,7 @@ class Agent:
     def new_session(self):
         """Start a new session"""
         self.session = Session.create(self.directory)
+        self.skills.clear()  # Clear loaded skills for new session
     
     async def cleanup(self):
         """Cleanup resources (disconnect MCP servers, etc.)"""

@@ -102,3 +102,57 @@ PLAN_AGENT_PROMPT = SYSTEM_PROMPT + """
 You are in read-only mode. You can read files and run safe commands, but cannot modify files.
 Analyze the codebase thoroughly using all available search tools and provide detailed recommendations.
 """
+
+
+def build_system_prompt(
+    cwd: str,
+    skills_block: str = "",
+    available_skills_summary: str = "",
+) -> str:
+    """
+    Build the full system prompt with skills injected.
+    
+    Args:
+        cwd: Current working directory
+        skills_block: Rendered content of loaded skills
+        available_skills_summary: Summary of available skills for the agent to know about
+    """
+    prompt = SYSTEM_PROMPT.format(cwd=cwd)
+    
+    # Add available skills summary if any
+    if available_skills_summary:
+        prompt += f"\n\n{available_skills_summary}"
+    
+    # Add loaded skills content
+    if skills_block:
+        prompt += f"\n\n{skills_block}"
+    
+    return prompt
+
+
+def format_available_skills(skills_list: list) -> str:
+    """Format available skills as a summary for the system prompt"""
+    if not skills_list:
+        return ""
+    
+    lines = [
+        "# Available Skills",
+        "",
+        "The following skills provide specialized instructions for specific tasks.",
+        "Use the skill tool to load a skill when the task matches its description.",
+        "",
+        "Loaded skills appear as `<loaded_skill name=\"...\">` in the conversation.",
+        "",
+        "<available_skills>",
+    ]
+    
+    for skill in skills_list:
+        lines.append("  <skill>")
+        lines.append(f"    <name>{skill.name}</name>")
+        lines.append(f"    <description>{skill.description or 'No description'}</description>")
+        lines.append(f"    <triggers>{', '.join(skill.triggers) if skill.triggers else 'manual'}</triggers>")
+        lines.append("  </skill>")
+    
+    lines.append("</available_skills>")
+    
+    return "\n".join(lines)
