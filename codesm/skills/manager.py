@@ -42,7 +42,7 @@ class SkillManager:
         auto_triggers_enabled: bool = True,
     ):
         self.workspace_dir = Path(workspace_dir).resolve()
-        self.skills_dirs = skills_dirs or [".codesm/skills", "skills"]
+        self.skills_dirs = skills_dirs or [".codesm/skills", "skills", "examples/skills"]
         self.auto_triggers_enabled = auto_triggers_enabled
         
         self._discovered: dict[str, Skill] = {}
