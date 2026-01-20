@@ -582,3 +582,95 @@ class TreeConnectorWidget(Static):
         text = Text()
         text.append("│", style=DIM)
         return text
+
+
+class StreamingTextWidget(Static):
+    """Widget to display streaming text response with live updates.
+    
+    Shows text as it streams in, with a blinking cursor at the end.
+    """
+
+    DEFAULT_CSS = """
+    StreamingTextWidget {
+        height: auto;
+        padding: 1 2;
+        margin: 1 0 0 0;
+    }
+    
+    StreamingTextWidget.streaming {
+        /* Active streaming state */
+    }
+    
+    StreamingTextWidget.complete {
+        /* Completed state */
+    }
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._content = ""
+        self._streaming = True
+        self._cursor_visible = True
+        self._cursor_frame = 0
+        self.set_class(True, "streaming")
+
+    def render(self) -> Text:
+        from rich.markdown import Markdown
+        from rich.console import Console
+        from rich.theme import Theme
+        
+        text = Text()
+        
+        if self._content:
+            # Render markdown content
+            themed_console = Console(
+                theme=Theme({
+                    "markdown.link": f"bold {CYAN}",
+                    "markdown.link_url": f"dim {CYAN}",
+                    "markdown.h1": "bold white",
+                    "markdown.h2": f"bold #8aadf4",
+                    "markdown.h3": f"bold #8aadf4",
+                    "markdown.code": f"{YELLOW}",
+                }),
+                force_terminal=True,
+                width=120,
+            )
+            
+            with themed_console.capture() as capture:
+                themed_console.print(Markdown(self._content, hyperlinks=True, code_theme="monokai"))
+            
+            text = Text.from_ansi(capture.get())
+        
+        # Add blinking cursor if still streaming
+        if self._streaming:
+            cursor = "▊" if self._cursor_visible else " "
+            text.append(cursor, style=f"bold {CYAN}")
+        
+        return text
+
+    def append_text(self, content: str):
+        """Append new text content (streaming)."""
+        self._content += content
+        self.refresh()
+
+    def set_content(self, content: str):
+        """Set the full content."""
+        self._content = content
+        self.refresh()
+
+    def get_content(self) -> str:
+        """Get the current content."""
+        return self._content
+
+    def mark_complete(self):
+        """Mark streaming as complete (hide cursor)."""
+        self._streaming = False
+        self.set_class(False, "streaming")
+        self.set_class(True, "complete")
+        self.refresh()
+
+    def toggle_cursor(self):
+        """Toggle cursor visibility for blinking effect."""
+        if self._streaming:
+            self._cursor_visible = not self._cursor_visible
+            self.refresh()

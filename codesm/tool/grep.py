@@ -39,7 +39,23 @@ class GrepTool(Tool):
         glob = args.get("glob")
         case_sensitive = args.get("case_sensitive", False)
         
-        cmd = ["rg", "--line-number", "--no-heading"]
+        cmd = ["rg", "--line-number", "--no-heading", "--max-count=50"]
+        
+        # Exclude common directories that shouldn't be searched
+        exclude_dirs = [
+            ".venv", "venv", ".env", "env",
+            "node_modules", ".git", ".hg", ".svn",
+            "__pycache__", ".pytest_cache", ".mypy_cache",
+            "dist", "build", ".tox", ".nox",
+            "site-packages", ".eggs", "*.egg-info",
+            "target", ".cargo",
+            ".next", ".nuxt", ".output",
+        ]
+        for exclude in exclude_dirs:
+            cmd.extend(["-g", f"!{exclude}"])
+        
+        # Exclude binary files
+        cmd.append("--binary")  # Don't search binary files
         
         if not case_sensitive:
             cmd.append("-i")
