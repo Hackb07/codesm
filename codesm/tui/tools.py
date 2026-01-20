@@ -1,8 +1,9 @@
-"""Tool display widgets - OpenCode inspired"""
+"""Tool display widgets - Terminal-inspired style with tree connectors"""
 
 from textual.widgets import Static
 from textual.containers import Vertical
 from rich.text import Text
+import re
 
 
 TOOL_ICONS = {
@@ -21,27 +22,24 @@ TOOL_ICONS = {
     "default": "✓",
 }
 
-TOOL_COLORS = {
-    "read": "#5dd9c1",
-    "write": "#f5a97f",
-    "edit": "#f5a97f",
-    "multiedit": "#eed49f",
-    "bash": "#cad3f5",
-    "grep": "#c6a0f6",
-    "glob": "#c6a0f6",
-    "web": "#8aadf4",
-    "webfetch": "#8aadf4",
-    "websearch": "#8aadf4",
-    "codesearch": "#ee99a0",
-    "todo": "#eed49f",
-    "ls": "#a6da95",
-    "batch": "#f5bde6",
-    "default": "#939ab7",
+# Define tool categories for grouping
+TOOL_CATEGORIES = {
+    "search": ["grep", "glob", "codesearch", "websearch"],
+    "file": ["read", "write", "edit", "multiedit", "ls"],
+    "web": ["web", "webfetch", "websearch"],
+    "system": ["bash"],
+    "task": ["todo"],
 }
+
+# Colors
+YELLOW = "#FFFF00"  # Keywords, patterns
+CYAN = "#5dd9c1"    # File paths
+GREEN = "#a6da95"   # Checkmarks
+DIM = "#666666"     # Tree connectors, secondary text
 
 
 class ToolCallWidget(Static):
-    """Widget to display a tool call - OpenCode style"""
+    """Widget to display a tool call - with tree-style connectors and color highlighting"""
 
     DEFAULT_CSS = """
     ToolCallWidget {
@@ -64,133 +62,161 @@ class ToolCallWidget(Static):
         tool_name: str,
         args: dict | None = None,
         pending: bool = True,
+        tree_position: str = "none",  # "first", "middle", "last", "none"
         **kwargs
     ):
         super().__init__(**kwargs)
         self.tool_name = tool_name
         self.args = args or {}
         self.pending = pending
+        self.tree_position = tree_position
         self._result_summary = ""
         self.set_class(pending, "pending")
         self.set_class(not pending, "completed")
 
     def render(self) -> Text:
-        icon = TOOL_ICONS.get(self.tool_name, TOOL_ICONS["default"])
-        color = TOOL_COLORS.get(self.tool_name, TOOL_COLORS["default"])
-        
         text = Text()
+        
+        # Add tree connector based on position
+        # "first" and "middle" use ├──, "last" uses └──, "only" uses └──
+        if self.tree_position in ("first", "middle"):
+            text.append("├── ", style=DIM)
+        elif self.tree_position in ("last", "only"):
+            text.append("└── ", style=DIM)
+        # "none" gets no connector
         
         if self.pending:
             text.append("~ ", style="dim")
-            text.append(self._format_tool_call(), style="dim")
+            text.append_text(self._format_tool_call_styled(dim=True))
         else:
-            text.append(f"{icon} ", style=f"bold green")
-            text.append(self._format_tool_call(), style="")
-            # Show result summary if available
+            text.append("✓ ", style=f"bold {GREEN}")
+            text.append_text(self._format_tool_call_styled(dim=False))
             if self._result_summary:
                 text.append(f" {self._result_summary}", style="dim")
         
         return text
 
-    def _format_tool_call(self) -> str:
-        """Format tool call for display"""
+    def _format_tool_call_styled(self, dim: bool = False) -> Text:
+        """Format tool call with rich styling - yellow keywords, cyan paths"""
+        text = Text()
         name = self.tool_name
         args = self.args
+        base_style = "dim" if dim else ""
         
         if name == "read":
             path = args.get("path", args.get("file_path", ""))
-            return f"Read {self._short_path(path)}"
+            text.append("Read ", style=base_style)
+            text.append(self._short_path(path), style=f"{CYAN} underline" if not dim else "dim")
         
         elif name == "write":
             path = args.get("path", args.get("file_path", ""))
-            return f"Write {self._short_path(path)}"
+            text.append("Write ", style=base_style)
+            text.append(self._short_path(path), style=f"{CYAN} underline" if not dim else "dim")
         
         elif name == "edit":
             path = args.get("path", args.get("file_path", ""))
-            return f"Edit {self._short_path(path)}"
+            text.append("Edit ", style=base_style)
+            text.append(self._short_path(path), style=f"{CYAN} underline" if not dim else "dim")
 
         elif name == "multiedit":
             path = args.get("path", "")
             edits = args.get("edits", [])
             num_edits = len(edits) if isinstance(edits, list) else 0
-            return f"MultiEdit {self._short_path(path)} ({num_edits} edit{'s' if num_edits != 1 else ''})"
+            text.append("MultiEdit ", style=base_style)
+            text.append(self._short_path(path), style=f"{CYAN} underline" if not dim else "dim")
+            text.append(f" ({num_edits} edit{'s' if num_edits != 1 else ''})", style="dim")
 
         elif name == "bash":
             cmd = args.get("command", "")
             desc = args.get("description", "")
             if desc:
-                return f"{desc}"
-            return f"$ {cmd[:50]}{'...' if len(cmd) > 50 else ''}"
+                text.append(desc, style=base_style)
+            else:
+                text.append("$ ", style=base_style)
+                cmd_display = cmd[:50] + '...' if len(cmd) > 50 else cmd
+                text.append(cmd_display, style=f"{YELLOW}" if not dim else "dim")
         
         elif name == "grep":
             pattern = args.get("pattern", "")
             path = args.get("path", "")
-            result = f'Grep "{pattern}"'
+            text.append("Grep ", style=base_style)
+            text.append(f'"{pattern}"', style=f"bold {YELLOW}" if not dim else "dim")
             if path:
-                result += f" in {self._short_path(path)}"
-            return result
+                text.append(" in ", style="dim")
+                text.append(self._short_path(path), style=f"{CYAN}" if not dim else "dim")
         
         elif name == "glob":
             pattern = args.get("pattern", args.get("file_pattern", ""))
             path = args.get("path", "")
-            result = f'Glob "{pattern}"'
+            text.append("Glob ", style=base_style)
+            text.append(f'"{pattern}"', style=f"bold {YELLOW}" if not dim else "dim")
             if path:
-                result += f" in {self._short_path(path)}"
-            return result
+                text.append(" in ", style="dim")
+                text.append(self._short_path(path), style=f"{CYAN}" if not dim else "dim")
         
         elif name == "web" or name == "webfetch":
             url = args.get("url", "")
-            return f"WebFetch {url}"
+            text.append("WebFetch ", style=base_style)
+            text.append(url, style=f"{CYAN} underline" if not dim else "dim")
         
         elif name == "websearch":
             query = args.get("query", "")
             num_results = args.get("num_results", "")
-            result = f'Web Search "{query}"'
+            text.append("Web Search ", style=base_style)
+            text.append(f'"{query}"', style=f"bold {YELLOW}" if not dim else "dim")
             if num_results:
-                result += f" ({num_results} results)"
-            return result
+                text.append(f" ({num_results} results)", style="dim")
         
         elif name == "codesearch":
             query = args.get("query", "")
             path = args.get("path", "")
-            result = f'Code Search "{query[:40]}{"..." if len(query) > 40 else ""}"'
+            query_display = query[:40] + "..." if len(query) > 40 else query
+            text.append("Code Search ", style=base_style)
+            text.append(f'"{query_display}"', style=f"bold {YELLOW}" if not dim else "dim")
             if path:
-                result += f" in {self._short_path(path)}"
-            return result
+                text.append(" in ", style="dim")
+                text.append(self._short_path(path), style=f"{CYAN}" if not dim else "dim")
         
         elif name == "todo":
             action = args.get("action", "")
             content = args.get("content", "")
             if action == "add":
-                return f"Todo + {content[:50]}{'...' if len(content) > 50 else ''}"
+                text.append("Todo + ", style=base_style)
+                content_display = content[:50] + '...' if len(content) > 50 else content
+                text.append(content_display, style=f"{YELLOW}" if not dim else "dim")
             elif action == "list":
-                return "Todo listing"
+                text.append("Todo listing", style=base_style)
             elif action == "start":
-                return "Todo ▸"  # Name will be added from result
+                text.append("Todo ▸", style=base_style)
             elif action == "done":
-                return "Todo ✓"  # Name will be added from result
+                text.append("Todo ✓", style=base_style)
             elif action == "cancel":
-                return "Todo ✗"
+                text.append("Todo ✗", style=base_style)
             elif action == "delete":
-                return "Todo -"
+                text.append("Todo -", style=base_style)
             elif action == "update":
-                return "Todo ~"
+                text.append("Todo ~", style=base_style)
             elif action == "clear_done":
-                return "Todo clearing completed"
-            return f"Todo {action}"
+                text.append("Todo clearing completed", style=base_style)
+            else:
+                text.append(f"Todo {action}", style=base_style)
         
         elif name == "ls":
             path = args.get("path", ".")
-            return f"List {self._short_path(path)}"
+            text.append("List ", style=base_style)
+            text.append(self._short_path(path), style=f"{CYAN}" if not dim else "dim")
         
         elif name == "batch":
             calls = args.get("tool_calls", [])
             tools = [c.get("tool", "?") for c in calls[:3]]
             suffix = f"+{len(calls)-3}" if len(calls) > 3 else ""
-            return f"Batch [{', '.join(tools)}{suffix}]"
+            text.append(f"Batch [{', '.join(tools)}{suffix}]", style=base_style)
         
         else:
-            return f"{name} {self._format_args(args)}"
+            text.append(f"{name} ", style=base_style)
+            text.append(self._format_args(args), style="dim")
+        
+        return text
 
     def _short_path(self, path: str) -> str:
         """Shorten path for display"""
@@ -222,6 +248,115 @@ class ToolCallWidget(Static):
             self.args.update(metadata)
         self.refresh()
 
+    def set_tree_position(self, position: str):
+        """Update tree position (first, middle, last, none)"""
+        self.tree_position = position
+        self.refresh()
+
+
+class ToolGroupWidget(Static):
+    """Widget to display a group of tool calls with a header and tree connectors"""
+
+    DEFAULT_CSS = """
+    ToolGroupWidget {
+        height: auto;
+        padding: 0 2;
+        margin: 1 0;
+    }
+    """
+
+    def __init__(self, category: str, **kwargs):
+        super().__init__(**kwargs)
+        self.category = category
+        self._tool_calls: list[tuple[str, dict, bool, str]] = []  # (name, args, pending, result_summary)
+
+    def render(self) -> Text:
+        text = Text()
+        
+        # Header with :: prefix style
+        text.append(":: ", style="bold white")
+        text.append(self.category.title(), style="bold white")
+        text.append("\n", style="")
+        
+        # Tree connector line
+        if self._tool_calls:
+            text.append("│\n", style=DIM)
+        
+        # Render each tool call with tree connectors
+        for i, (name, args, pending, result_summary) in enumerate(self._tool_calls):
+            is_last = (i == len(self._tool_calls) - 1)
+            
+            # Tree connector
+            if is_last:
+                text.append("└── ", style=DIM)
+            else:
+                text.append("├── ", style=DIM)
+            
+            # Status icon
+            if pending:
+                text.append("~ ", style="dim")
+            else:
+                text.append("✓ ", style=f"bold {GREEN}")
+            
+            # Tool name and args (simplified inline rendering)
+            text.append_text(self._format_inline_tool(name, args, pending))
+            
+            if result_summary and not pending:
+                text.append(f" {result_summary}", style="dim")
+            
+            if not is_last:
+                text.append("\n", style="")
+        
+        return text
+
+    def _format_inline_tool(self, name: str, args: dict, pending: bool) -> Text:
+        """Format a single tool inline for the group display"""
+        text = Text()
+        dim = pending
+        base_style = "dim" if dim else ""
+        
+        if name == "grep":
+            pattern = args.get("pattern", "")
+            path = args.get("path", "")
+            text.append("Grep ", style=base_style)
+            text.append(f'"{pattern}"', style=f"bold {YELLOW}" if not dim else "dim")
+            if path:
+                text.append(" in ", style="dim")
+                text.append(self._short_path(path), style=f"{CYAN}" if not dim else "dim")
+        elif name == "glob":
+            pattern = args.get("pattern", args.get("file_pattern", ""))
+            text.append("Glob ", style=base_style)
+            text.append(f'"{pattern}"', style=f"bold {YELLOW}" if not dim else "dim")
+        elif name == "read":
+            path = args.get("path", args.get("file_path", ""))
+            text.append("Read ", style=base_style)
+            text.append(self._short_path(path), style=f"{CYAN} underline" if not dim else "dim")
+        else:
+            text.append(f"{name}", style=base_style)
+        
+        return text
+
+    def _short_path(self, path: str) -> str:
+        """Shorten path for display"""
+        if not path:
+            return ""
+        parts = path.split("/")
+        if len(parts) > 3:
+            return f".../{'/'.join(parts[-2:])}"
+        return path
+
+    def add_tool(self, name: str, args: dict, pending: bool = True):
+        """Add a tool call to the group"""
+        self._tool_calls.append((name, args, pending, ""))
+        self.refresh()
+
+    def mark_tool_completed(self, index: int, result_summary: str = ""):
+        """Mark a specific tool as completed"""
+        if 0 <= index < len(self._tool_calls):
+            name, args, _, _ = self._tool_calls[index]
+            self._tool_calls[index] = (name, args, False, result_summary)
+            self.refresh()
+
 
 class TodoItemWidget(Static):
     """Widget to display a single todo item - OpenCode style"""
@@ -245,9 +380,9 @@ class TodoItemWidget(Static):
         
         # Status indicator like opencode: [✓] completed, [•] in_progress, [ ] pending
         if self.status == "done":
-            text.append("[✓] ", style="bold green")
+            text.append("[✓] ", style=f"bold {GREEN}")
         elif self.status == "in_progress":
-            text.append("[•] ", style="bold yellow")
+            text.append("[•] ", style=f"bold {YELLOW}")
         elif self.status == "cancelled":
             text.append("[-] ", style="dim")
         else:  # pending
@@ -256,7 +391,7 @@ class TodoItemWidget(Static):
         # Content with appropriate style
         content_style = "dim strike" if self.status in ("done", "cancelled") else ""
         if self.status == "in_progress":
-            content_style = "yellow"
+            content_style = YELLOW
         text.append(self.content, style=content_style)
         
         return text
@@ -293,9 +428,9 @@ class TodoListWidget(Static):
             
             # Status indicator
             if status == "done":
-                text.append("  [✓] ", style="bold green")
+                text.append("  [✓] ", style=f"bold {GREEN}")
             elif status == "in_progress":
-                text.append("  [•] ", style="bold yellow")
+                text.append("  [•] ", style=f"bold {YELLOW}")
             elif status == "cancelled":
                 text.append("  [-] ", style="dim")
             else:
@@ -304,7 +439,7 @@ class TodoListWidget(Static):
             # Content
             content_style = "dim strike" if status in ("done", "cancelled") else ""
             if status == "in_progress":
-                content_style = "yellow"
+                content_style = YELLOW
             text.append(content, style=content_style)
         
         return text
@@ -386,7 +521,7 @@ class ThinkingWidget(Static):
         dots = self._dots[self._frame % len(self._dots)]
         
         text = Text()
-        text.append(f"[{dots}] ", style="bold cyan")
+        text.append(f"[{dots}] ", style=f"bold {CYAN}")
         text.append(f"{spinner} ", style="dim")
         text.append(self.message, style="dim")
         text.append(" ▸", style="dim")
@@ -408,3 +543,42 @@ class ThinkingWidget(Static):
         self._message_index = (self._message_index + 1) % len(self.THINKING_MESSAGES)
         self.message = self.THINKING_MESSAGES[self._message_index]
         self.refresh()
+
+
+class ActionHeaderWidget(Static):
+    """Widget to display an action header like ':: Search'"""
+
+    DEFAULT_CSS = """
+    ActionHeaderWidget {
+        height: auto;
+        padding: 0 2;
+        margin: 1 0 0 0;
+    }
+    """
+
+    def __init__(self, title: str, **kwargs):
+        super().__init__(**kwargs)
+        self.title = title
+
+    def render(self) -> Text:
+        text = Text()
+        text.append(":: ", style="bold white")
+        text.append(self.title, style="bold white")
+        return text
+
+
+class TreeConnectorWidget(Static):
+    """Widget to display a vertical tree connector line"""
+
+    DEFAULT_CSS = """
+    TreeConnectorWidget {
+        height: auto;
+        padding: 0 2;
+        margin: 0;
+    }
+    """
+
+    def render(self) -> Text:
+        text = Text()
+        text.append("│", style=DIM)
+        return text

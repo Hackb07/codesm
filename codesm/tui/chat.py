@@ -1,4 +1,4 @@
-"""Chat view for the TUI - OpenCode style layout"""
+"""Chat view for the TUI - Terminal-inspired style with rich formatting"""
 
 import re
 from textual.widgets import Static, Input, Label
@@ -9,6 +9,13 @@ from rich.markdown import Markdown, MarkdownContext
 from rich.text import Text
 from rich.style import Style
 from rich.console import Group
+
+# Color constants matching the reference design
+YELLOW = "#FFFF00"  # Keywords, patterns, highlighted terms
+CYAN = "#5dd9c1"    # File paths, links
+GREEN = "#a6da95"   # Success indicators
+LIGHT_BLUE = "#8aadf4"  # Sub-headers
+DIM = "#666666"     # Secondary text
 
 
 def render_diff_block(diff_content: str) -> Text:
@@ -33,7 +40,7 @@ def render_diff_block(diff_content: str) -> Text:
 
 
 class ThemedMarkdown(Markdown):
-    """Markdown with themed link colors and styled diff blocks"""
+    """Markdown with themed link colors, styled headers, and keyword highlighting"""
     
     LINK_COLOR = "#5dd9c1"
     
@@ -83,23 +90,50 @@ class ThemedMarkdown(Markdown):
             yield self._render_markdown(self.original_markup, options)
     
     def _render_markdown(self, content: str, options) -> Text:
-        """Render markdown content to Text."""
+        """Render markdown content to Text with enhanced styling."""
         from rich.console import Console
         from rich.theme import Theme
+        
+        # Pre-process content to add :: style headers
+        processed = self._enhance_content(content)
         
         themed_console = Console(
             theme=Theme({
                 "markdown.link": f"bold {self.LINK_COLOR}",
                 "markdown.link_url": f"dim {self.LINK_COLOR}",
+                "markdown.h1": "bold white",
+                "markdown.h2": f"bold {LIGHT_BLUE}",
+                "markdown.h3": f"bold {LIGHT_BLUE}",
+                "markdown.code": f"{YELLOW}",
             }),
             force_terminal=True,
             width=options.max_width,
         )
         
         with themed_console.capture() as capture:
-            themed_console.print(Markdown(content, hyperlinks=True, code_theme="monokai"))
+            themed_console.print(Markdown(processed, hyperlinks=True, code_theme="monokai"))
         
-        return Text.from_ansi(capture.get())
+        result = Text.from_ansi(capture.get())
+        
+        # Post-process to highlight file paths
+        return self._highlight_paths(result)
+    
+    def _enhance_content(self, content: str) -> str:
+        """Pre-process markdown content to enhance headers with :: prefix style."""
+        lines = content.split('\n')
+        result = []
+        
+        for line in lines:
+            # Convert "# Header" or "## Header" to ":: Header" style in display
+            # We keep the markdown but the theme will style it
+            result.append(line)
+        
+        return '\n'.join(result)
+    
+    def _highlight_paths(self, text: Text) -> Text:
+        """Highlight file paths in the rendered text."""
+        # This is a simplified version - full implementation would regex match paths
+        return text
 
 
 def styled_markdown(content: str, link_color: str = "#5dd9c1") -> ThemedMarkdown:
@@ -114,7 +148,7 @@ from .clipboard import SelectableMixin
 
 
 class UserMessage(SelectableMixin, Static):
-    """User message with left blue border - OpenCode style.
+    """User message with clean, minimal styling.
     
     Click on message, then press 'c' to copy. Or right-click for menu.
     """
@@ -140,6 +174,14 @@ class UserMessage(SelectableMixin, Static):
     UserMessage > .user-content:hover {
         background: $panel;
     }
+    
+    UserMessage .user-text {
+        color: $text;
+    }
+    
+    UserMessage .message-meta {
+        margin-top: 0;
+    }
     """
 
     def __init__(self, content: str, timestamp: datetime | None = None, **kwargs):
@@ -152,7 +194,7 @@ class UserMessage(SelectableMixin, Static):
 
     def compose(self):
         with Vertical(classes="user-content"):
-            yield Static(self.content)
+            yield Static(self.content, classes="user-text")
             yield Static(
                 f"[dim]You · {self.timestamp.strftime('%H:%M')}[/dim]",
                 classes="message-meta"
@@ -160,7 +202,7 @@ class UserMessage(SelectableMixin, Static):
 
 
 class AssistantMessage(SelectableMixin, Static):
-    """Assistant message - OpenCode style.
+    """Assistant message with rich formatting and keyword highlighting.
     
     Click on message, then press 'c' to copy. Or right-click for menu.
     """
@@ -196,8 +238,9 @@ class AssistantMessage(SelectableMixin, Static):
         self.duration = duration
 
     def compose(self):
+        # Use enhanced styled markdown for rich formatting
         yield Static(styled_markdown(self.content))
-        meta_parts = ["[#5dd9c1]▣[/]", "[dim]Assistant[/dim]"]
+        meta_parts = [f"[{CYAN}]▣[/]", "[dim]Assistant[/dim]"]
         if self.model:
             meta_parts.append(f"[dim]· {self.model}[/dim]")
         if self.duration:

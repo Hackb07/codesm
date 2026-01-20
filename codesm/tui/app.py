@@ -15,7 +15,10 @@ from .modals import ModelSelectModal, ProviderConnectModal, AuthMethodModal, API
 from .session_modal import SessionListModal
 from .command_palette import CommandPaletteModal
 from .chat import ChatMessage, ContextSidebar, PromptInput
-from .tools import ToolCallWidget, ToolResultWidget, ThinkingWidget, TodoListWidget
+from .tools import (
+    ToolCallWidget, ToolResultWidget, ThinkingWidget, TodoListWidget,
+    ActionHeaderWidget, TreeConnectorWidget, TOOL_CATEGORIES
+)
 from .autocomplete import AutocompletePopup
 from codesm.auth import ClaudeOAuth
 from codesm.permission import get_permission_manager, PermissionRequest, PermissionResponse, respond_permission
@@ -811,6 +814,11 @@ class CodesmApp(App):
             response_text = ""
             tool_widgets: dict[str, ToolCallWidget] = {}
             tools_used: list[str] = []
+            
+            # Track current action group for tree-style display
+            current_action: str | None = None
+            action_tool_count: int = 0
+            last_tool_widget: ToolCallWidget | None = None
 
             async for chunk in self.agent.chat(message):
                 # Check if cancel was requested
@@ -824,6 +832,28 @@ class CodesmApp(App):
                         logger.debug(f"Received text chunk: {chunk.content[:50] if chunk.content else 'empty'}...")
                     elif chunk.type == "tool_call":
                         logger.debug(f"Tool call: {chunk.name} with args {chunk.args}")
+                        
+                        # Determine action category for grouping
+                        action_category = self._get_tool_category(chunk.name)
+                        
+                        # Add action header if starting a new category
+                        if action_category != current_action:
+                            # Mark previous last tool as "last" in its group
+                            if last_tool_widget is not None:
+                                last_tool_widget.set_tree_position("last")
+                            
+                            current_action = action_category
+                            action_tool_count = 0
+                            
+                            # Add action header widget
+                            header = ActionHeaderWidget(action_category)
+                            await messages_container.mount(header)
+                            
+                            # Add tree connector line
+                            connector = TreeConnectorWidget()
+                            await messages_container.mount(connector)
+                        
+                        action_tool_count += 1
                         
                         # Update thinking message based on tool
                         tool_messages = {
@@ -841,12 +871,18 @@ class CodesmApp(App):
                             msg = tool_messages.get(chunk.name, f"Using {chunk.name}")
                             self._thinking_widget.set_message(msg)
                         
+                        # Tree position: first tool gets "first", others get "middle"
+                        # The actual last one will be updated to "last" when we know
+                        tree_position = "middle" if action_tool_count > 1 else "first"
+                        
                         tool_widget = ToolCallWidget(
                             tool_name=chunk.name,
                             args=chunk.args if isinstance(chunk.args, dict) else {},
                             pending=True,
+                            tree_position=tree_position,
                         )
                         tool_widgets[chunk.id] = tool_widget
+                        last_tool_widget = tool_widget
                         if chunk.name not in tools_used:
                             tools_used.append(chunk.name)
                         await messages_container.mount(tool_widget)
@@ -877,6 +913,10 @@ class CodesmApp(App):
                     response_text += str(chunk)
 
             duration = time.time() - start_time
+            
+            # Mark the final tool widget as "last" in its group
+            if last_tool_widget is not None:
+                last_tool_widget.set_tree_position("last")
 
             # Add assistant response
             if response_text:
@@ -1099,6 +1139,26 @@ class CodesmApp(App):
             self.query_one("#footer-mode-model", Static).update(display_text)
         except Exception:
             pass
+
+    def _get_tool_category(self, tool_name: str) -> str:
+        """Get the action category for a tool (for grouping in tree display)."""
+        for category, tools in TOOL_CATEGORIES.items():
+            if tool_name in tools:
+                return category.title()
+        
+        # Default categories based on common patterns
+        if tool_name in ["grep", "glob", "codesearch", "websearch"]:
+            return "Search"
+        elif tool_name in ["read", "write", "edit", "multiedit", "ls"]:
+            return "Files"
+        elif tool_name in ["bash"]:
+            return "Command"
+        elif tool_name in ["web", "webfetch"]:
+            return "Web"
+        elif tool_name in ["todo"]:
+            return "Tasks"
+        else:
+            return "Action"
 
     def _get_result_summary(self, tool_name: str, content: str) -> str:
         """Generate a compact summary for tool results."""
