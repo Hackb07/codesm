@@ -3,6 +3,7 @@ from .modals import ModelSelectModal, ProviderConnectModal
 from .themes import THEMES, get_next_theme
 from .command_palette import CommandPaletteModal
 from .clipboard import SelectableMixin, SelectableStatic
+from .autocomplete import AutocompletePopup, AutocompleteInput
 
 __all__ = [
     "CodesmApp",
@@ -13,4 +14,6 @@ __all__ = [
     "CommandPaletteModal",
     "SelectableMixin",
     "SelectableStatic",
+    "AutocompletePopup",
+    "AutocompleteInput",
 ]

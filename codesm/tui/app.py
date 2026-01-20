@@ -16,6 +16,7 @@ from .session_modal import SessionListModal
 from .command_palette import CommandPaletteModal
 from .chat import ChatMessage, ContextSidebar, PromptInput
 from .tools import ToolCallWidget, ToolResultWidget, ThinkingWidget, TodoListWidget
+from .autocomplete import AutocompletePopup
 from codesm.auth import ClaudeOAuth
 from codesm.permission import get_permission_manager, PermissionRequest, PermissionResponse, respond_permission
 
@@ -310,6 +311,9 @@ class CodesmApp(App):
         self._chat_worker: Worker | None = None
         self._cancel_requested = False
         self._mode = "smart"  # Agent mode: "smart" or "rush"
+        self._showing_autocomplete = False
+        self._autocomplete_trigger_pos = 0
+        self._file_mentions: list[str] = []  # Track mentioned files for context
         
         # Set up permission callback
         permission_manager = get_permission_manager()
@@ -477,8 +481,8 @@ class CodesmApp(App):
         asyncio.create_task(start_lsp())
 
     def on_input_changed(self, event: Input.Changed):
-        """Handle input text changes - show command palette when / is typed"""
-        if self._showing_palette:
+        """Handle input text changes - show command palette or autocomplete"""
+        if self._showing_palette or self._showing_autocomplete:
             return
 
         text = event.value
@@ -486,6 +490,9 @@ class CodesmApp(App):
             self._showing_palette = True
             event.input.value = ""
             self.push_screen(CommandPaletteModal("/"), self._on_palette_dismiss)
+        elif text.endswith("@") and (len(text) == 1 or text[-2] == " "):
+            # Trigger @ autocomplete for files/agents
+            self._trigger_autocomplete(event.input)
 
     def _on_palette_dismiss(self, result: str | None):
         """Handle command palette dismiss"""
@@ -493,6 +500,44 @@ class CodesmApp(App):
         if result:
             self.call_later(self._execute_command_sync, result)
         self._get_active_input().focus()
+
+    def _trigger_autocomplete(self, input_widget: Input):
+        """Show autocomplete popup for @ mentions."""
+        self._showing_autocomplete = True
+        self._autocomplete_trigger_pos = len(input_widget.value)
+        
+        self.push_screen(
+            AutocompletePopup(
+                mode="@",
+                workspace=Path(self.directory),
+                initial_filter="",
+                agents=["general"],  # Available subagents
+            ),
+            self._on_autocomplete_dismiss,
+        )
+
+    def _on_autocomplete_dismiss(self, result: str | None):
+        """Handle autocomplete selection."""
+        self._showing_autocomplete = False
+        input_widget = self._get_active_input()
+        
+        if result:
+            # Replace the @ with the selected value
+            current = input_widget.value
+            before_at = current[:self._autocomplete_trigger_pos - 1]  # Before '@'
+            after_cursor = current[self._autocomplete_trigger_pos:]  # After trigger
+            
+            # Build new value with completion
+            suffix = " " if not after_cursor.startswith(" ") else ""
+            input_widget.value = before_at + result + suffix + after_cursor
+            input_widget.cursor_position = len(before_at + result + suffix)
+            
+            # Track file mentions for context
+            if not result.startswith("@"):
+                self._file_mentions.append(result)
+                logger.info(f"Added file mention: {result}")
+        
+        input_widget.focus()
 
     def _execute_command_sync(self, cmd: str):
         """Execute command synchronously, scheduling async operations"""
