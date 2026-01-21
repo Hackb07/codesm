@@ -59,6 +59,9 @@ class ModelRouter:
         
         # Task Router - fast complexity classification
         "router": "openrouter/google/gemini-2.0-flash-lite-001",
+        
+        # Diagram generation
+        "diagram": "openrouter/google/gemini-2.5-flash-preview",
     }
 
     @classmethod

@@ -43,6 +43,7 @@ class ToolRegistry:
         from .finder import FinderTool
         from .handoff import HandoffTool
         from .orchestrate import OrchestrateTool, PipelineTool
+        from .mermaid import MermaidTool, DiagramGeneratorTool
 
         for tool_class in [ReadTool, WriteTool, EditTool, MultiEditTool, BashTool, GrepTool, GlobTool, WebFetchTool, WebSearchTool, DiagnosticsTool, CodeSearchTool, TodoTool, ListTool, BatchTool, PatchTool, SkillTool, UndoTool, LookAtTool]:
             tool = tool_class()
@@ -70,6 +71,13 @@ class ToolRegistry:
         
         pipeline_tool = PipelineTool(parent_tools=self)
         self._tools[pipeline_tool.name] = pipeline_tool
+        
+        # Mermaid diagram tools
+        mermaid_tool = MermaidTool(parent_tools=self)
+        self._tools[mermaid_tool.name] = mermaid_tool
+        
+        diagram_tool = DiagramGeneratorTool(parent_tools=self)
+        self._tools[diagram_tool.name] = diagram_tool
     
     def register(self, tool: Tool):
         """Register a tool"""

@@ -114,7 +114,7 @@ The system uses task-specialized models across three tiers:
 - [x] Cost/latency optimization layer
 
 #### Other Smart Features
-- [ ] Mermaid diagram generation
+- [x] Mermaid diagram generation
 - [ ] Thread search & cross-thread context
 - [ ] Auto todo planning & tracking during tasks
 - [ ] File citations with clickable links
