@@ -1,0 +1,27 @@
+Hand off work to a new thread with preserved context.
+
+Use this tool when:
+- The current conversation is getting too long and context is degrading
+- You need to start a focused subtask while preserving important context
+- The context window is near capacity
+
+The handoff tool uses Gemini 2.5 Flash to analyze the current conversation and extract:
+- Goal and progress summary
+- Files modified and current state
+- Next steps and key context
+
+A new session is created with this summarized context, allowing seamless task continuation.
+
+Parameters:
+- goal: Brief description of what should continue (required)
+- follow: If true, switch to new thread immediately (default: true)
+- include_files: Optional list of important file paths
+
+Example:
+```json
+{
+  "goal": "Continue implementing the authentication middleware",
+  "follow": true,
+  "include_files": ["src/auth/middleware.py", "src/auth/jwt.py"]
+}
+```

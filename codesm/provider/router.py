@@ -47,9 +47,12 @@ class ModelRouter:
         "search": "openrouter/google/gemini-flash-1.5",
         "review": "openrouter/google/gemini-pro-1.5",
         
-        # Gemini 3 Flash for high-speed codebase retrieval
+        # Gemini 2.5 Flash for high-speed codebase retrieval
         "gemini-3-flash": "openrouter/google/gemini-2.5-flash-preview",
         "finder": "openrouter/google/gemini-2.5-flash-preview",
+        
+        # Handoff system - context analysis and task continuation
+        "handoff": "openrouter/google/gemini-2.5-flash-preview",
     }
 
     @classmethod
