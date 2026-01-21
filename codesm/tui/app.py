@@ -664,6 +664,31 @@ class CodesmApp(App):
                 self.notify("Failed to load session")
         
         self._get_active_input().focus()
+    
+    async def _switch_to_session(self, session_id: str):
+        """Switch to a session by ID (async version for handoff)"""
+        from codesm.session.session import Session
+        session = Session.load(session_id)
+        if session:
+            # Update agent with new session
+            if self.agent:
+                self.agent.session = session
+            
+            # Clear current messages and switch to chat view
+            self._switch_to_chat(show_session_start=False)
+            
+            # Clear existing messages in the container
+            messages_container = self.query_one("#messages", Vertical)
+            await messages_container.remove_children()
+            
+            # Display new session messages
+            messages = session.get_messages_for_display()
+            self._display_session_messages(messages)
+            
+            self.notify(f"Handoff complete: {session.title}")
+            self._update_sidebar_title()
+        else:
+            self.notify(f"Failed to load session: {session_id}")
 
     def _on_model_selected(self, result: str | None):
         """Handle model selection"""
@@ -934,6 +959,10 @@ class CodesmApp(App):
                                     todo_widget = TodoListWidget(todos)
                                     await messages_container.mount(todo_widget)
                                     chat_container.scroll_end(animate=False)
+                    elif chunk.type == "handoff":
+                        # Handle handoff to new session
+                        logger.info(f"Handoff triggered to session: {chunk.new_session_id}")
+                        self._pending_handoff_session = chunk.new_session_id
                 else:
                     response_text += str(chunk)
 
@@ -979,6 +1008,12 @@ class CodesmApp(App):
             # Run code review if files were edited
             if tools_used and any(t in tools_used for t in ["edit", "write", "multiedit"]):
                 await self._run_code_review(messages_container, chat_container)
+            
+            # Handle pending handoff - switch to new session
+            if hasattr(self, "_pending_handoff_session") and self._pending_handoff_session:
+                new_session_id = self._pending_handoff_session
+                self._pending_handoff_session = None
+                await self._switch_to_session(new_session_id)
 
         except Exception as e:
             logger.error(f"Error in chat: {e}", exc_info=True)

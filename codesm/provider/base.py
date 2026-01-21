@@ -8,11 +8,13 @@ from typing import AsyncIterator, Literal
 @dataclass
 class StreamChunk:
     """A chunk of streamed response from an LLM"""
-    type: Literal["text", "tool_call", "tool_call_delta", "tool_result"]
+    type: Literal["text", "tool_call", "tool_call_delta", "tool_result", "handoff"]
     content: str = ""
     name: str = ""
     args: dict = field(default_factory=dict)
     id: str = ""
+    # For handoff events
+    new_session_id: str = ""
 
 
 class Provider(ABC):

@@ -169,9 +169,10 @@ Create a concise handoff document that will allow a new agent to continue this w
 """
             
             if follow:
-                result += f"\n→ Switching to new thread. Use `/session {new_session.id}` to return to this thread."
-                # Store new session ID for the UI to pick up
+                result += f"\n→ Switching to new thread..."
+                # Signal the agent/TUI to switch sessions
                 context["_handoff_session_id"] = new_session.id
+                context["_handoff_follow"] = True
             else:
                 result += f"\n→ New thread created. Use `/session {new_session.id}` to continue there."
             

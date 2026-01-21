@@ -122,6 +122,17 @@ class ReActLoop:
                     id=call_id,
                     name=name,
                 )
+                
+                # Check if handoff was triggered
+                if context.get("_handoff_follow") and context.get("_handoff_session_id"):
+                    handoff_session_id = context.pop("_handoff_session_id")
+                    context.pop("_handoff_follow", None)
+                    yield StreamChunk(
+                        type="handoff",
+                        content=f"Switching to session {handoff_session_id}",
+                        new_session_id=handoff_session_id,
+                    )
+                    return  # Stop the loop after handoff
         
         if self.max_iterations > 0 and iteration >= self.max_iterations:
             yield StreamChunk(

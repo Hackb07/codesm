@@ -267,3 +267,36 @@ The system uses task-specialized models across three tiers:
 | `/theme` | Change theme |
 | `/status` | Show current status |
 | `/help` | Show help |
+
+---
+
+## Post-Development Roadmap
+
+### Phase 1: Polish & Reliability (1-2 weeks)
+**Goal: Make it daily-drivable**
+- [ ] **Undo/Redo system** - Critical for trust
+- [ ] **Permission prompts** - Ask before destructive ops
+- [ ] **AGENTS.md support** - Match Amp/Claude Code behavior
+- [ ] **Streaming tool output** - Real-time feedback for bash/tests
+
+### Phase 2: Differentiation (2-4 weeks)
+**Goal: Create your unique angle**
+- [ ] **Ollama/local models** - First-class offline support (big differentiator)
+- [ ] **Cost tracking dashboard** - Show users their spend in real-time
+- [ ] **Git integration** - Auto-commit, branch, PR creation
+- [ ] **Cross-session memory** - Remember preferences/past solutions
+
+### Phase 3: Community & Growth (4-8 weeks)
+**Goal: Build traction**
+- [ ] **Plugin marketplace/skills** - Let community extend
+- [ ] **VS Code extension** - Meet devs where they are
+- [ ] **Session sharing** - Viral loop for growth
+- [ ] **Better docs + demo videos**
+
+### Recommended Focus Order
+1. **Undo system** → builds trust
+2. **Ollama support** → unique selling point vs Cursor/Claude Code
+3. **Cost tracking** → users love transparency
+4. **Git integration** → makes it a complete workflow
+
+> 💡 **Strategic Note:** Ship Ollama support early—"fully local AI coding agent" is a strong positioning no major player owns yet.
