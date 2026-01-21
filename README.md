@@ -98,7 +98,7 @@ The system uses task-specialized models across three tiers:
 
 **Tier 3: Specialized Subagents** (Background processing)
 - [x] **Oracle** - GPT-5/o1 for complex reasoning, planning, debugging
-- [ ] **Finder/Search** - Gemini 3 Flash for high-speed codebase retrieval
+- [x] **Finder/Search** - Gemini 2.5 Flash for high-speed codebase retrieval
 - [ ] **Librarian** - Claude Sonnet 4.5 for multi-repo research & external code
 
 **Workflow Management**
@@ -120,6 +120,100 @@ The system uses task-specialized models across three tiers:
 - [ ] File citations with clickable links
 - [x] Web page reading (WebFetch tool)
 - [x] Parallel tool execution optimization
+
+## Roadmap: Competitive Feature
+
+### Critical (To match Amp/Claude Code/OpenCode)
+
+#### Agent Architecture
+- [ ] **Parallel Subagent Spawning** - Run multiple subagents concurrently for independent tasks
+- [ ] **Context Window Management** - Smart context compression, summarization, and handoff
+- [ ] **Automatic Thread Handoff** - When context gets long, seamlessly continue in new thread
+- [ ] **Task Decomposition Engine** - Break complex tasks into parallelizable subtasks
+- [ ] **Agent Self-Correction** - Detect and retry failed tool calls with different approaches
+
+#### Tool System
+- [ ] **Undo/Redo System** - Revert any file edit with full history
+- [ ] **File Watcher** - React to file changes in real-time
+- [ ] **Format on Save** - Auto-format files after edits (prettier, black, etc.)
+- [ ] **Diff Preview** - Show unified diff before applying edits
+- [ ] **Multi-file Atomic Edits** - Transactional edits across files
+
+#### Context & Memory
+- [ ] **AGENTS.md Support** - Read project-specific instructions automatically
+- [ ] **Cross-Session Memory** - Remember user preferences and past solutions
+- [ ] **Codebase Indexing** - Pre-index repos for instant semantic search
+- [ ] **Git Integration** - Auto-commit, branch management, PR creation
+- [ ] **Conversation Branching** - Fork conversations to explore alternatives
+
+### Important (Competitive Advantages)
+
+#### Intelligence Layer
+- [ ] **Librarian Subagent** - Multi-repo research with GitHub API integration
+- [ ] **Code Review Agent** - Automatic PR review with actionable feedback
+- [ ] **Test Generation** - Auto-generate tests for new/changed code
+- [ ] **Bug Localization** - Given an error, find the root cause automatically
+- [ ] **Refactoring Suggestions** - Proactive code improvement recommendations
+
+#### Developer Experience
+- [ ] **Streaming Tool Output** - Real-time output for long-running tools (tests, builds)
+- [ ] **Progress Indicators** - Show what the agent is doing at each step
+- [ ] **Keyboard-First Navigation** - Vim-style motions throughout TUI
+- [ ] **Split Pane View** - Code preview alongside chat
+- [ ] **File Tree Browser** - Navigate and select files visually
+- [ ] **Syntax Highlighted Diffs** - Beautiful, readable code changes
+
+#### Safety & Permissions
+- [ ] **Sandboxed Execution** - Run bash commands in isolated environment
+- [ ] **Permission Prompts** - Ask before destructive operations
+- [ ] **Allowlist/Blocklist** - Configure which commands/paths are allowed
+- [ ] **Audit Log** - Track all agent actions for review
+- [ ] **Dry Run Mode** - Preview all changes without applying
+
+### Nice to Have (Killer Features)
+
+#### Advanced Capabilities
+- [ ] **Mermaid Diagram Generation** - Auto-generate architecture/flow diagrams
+- [ ] **Image/Screenshot Analysis** - Describe UI, extract text from images
+- [ ] **PDF/Document Reading** - Extract and summarize document contents
+- [ ] **Browser Automation** - Navigate and interact with web pages
+- [ ] **API Testing** - Make HTTP requests and validate responses
+
+#### Local-First Features
+- [ ] **Ollama Integration** - Run fully local with open models
+- [ ] **Embedding Cache** - Local vector DB for semantic search (ChromaDB/LanceDB)
+- [ ] **Offline Fallback** - Graceful degradation when no internet
+- [ ] **Model Switching Mid-Task** - Hot-swap models during execution
+- [ ] **Cost Tracking Dashboard** - Monitor API spend in real-time
+
+#### Collaboration
+- [ ] **Session Sharing** - Share conversations via URL
+- [ ] **Team Workspaces** - Shared sessions, shared memory
+- [ ] **Real-time Collaboration** - Multiple users in same session
+- [ ] **Export Formats** - Export to Markdown, JSON, or executable scripts
+
+#### IDE Integration
+- [ ] **VS Code Extension** - Native integration with file syncing
+- [ ] **Neovim Plugin** - Lua-based plugin for Neovim users  
+- [ ] **JetBrains Plugin** - Support for IntelliJ-based IDEs
+- [ ] **Language Server** - Act as an LSP for AI-powered completions
+
+#### Voice & Accessibility
+- [ ] **Voice Input** - Whisper-based speech-to-text
+- [ ] **Voice Output** - TTS for responses (optional)
+- [ ] **Screen Reader Support** - Full accessibility compliance
+- [ ] **High Contrast Themes** - Accessibility-focused UI themes
+
+### Experimental (Moonshots)
+
+- [ ] **Self-Improving Agent** - Learn from user corrections
+- [ ] **Codebase-Specific Fine-tuning** - LoRA adapters for your repos
+- [ ] **Multi-Agent Debates** - Multiple agents argue to find best solution
+- [ ] **Autonomous Mode** - Run overnight, wake user for decisions
+- [ ] **Plugin Marketplace** - Community-built skills and extensions
+- [ ] **Natural Language Git** - "Undo my last 3 commits" → executes git commands
+- [ ] **Code Generation Streaming** - Token-by-token code preview as it's written
+- [ ] **Predictive Actions** - Suggest next action before user asks
 
 ---
 
