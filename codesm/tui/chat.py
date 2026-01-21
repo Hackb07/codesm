@@ -5,17 +5,40 @@ from textual.widgets import Static, Input, Label
 from textual.containers import VerticalScroll, Vertical, Horizontal
 from textual import events
 from textual.reactive import reactive
-from rich.markdown import Markdown, MarkdownContext
+from rich.markdown import Markdown, MarkdownContext, Heading
 from rich.text import Text
 from rich.style import Style
 from rich.console import Group
+from rich.panel import Panel
 
-# Color constants matching the reference design
-YELLOW = "#FFFF00"  # Keywords, patterns, highlighted terms
-CYAN = "#5dd9c1"    # File paths, links
+# Color constants matching Amp/OpenCode reference design  
+YELLOW = "#eed49f"  # Keywords, patterns, inline code (softer gold)
+CYAN = "#8bd5ca"    # File paths, links (teal)
 GREEN = "#a6da95"   # Success indicators
-LIGHT_BLUE = "#8aadf4"  # Sub-headers
-DIM = "#666666"     # Secondary text
+LIGHT_BLUE = "#8aadf4"  # Headers (periwinkle)
+WHITE = "#cad3f5"   # Primary text
+STRONG = "#f5f5f5"  # Bold/strong text
+DIM = "#6e738d"     # Secondary/muted text
+SURFACE = "#24273a" # Background accent
+
+
+class LeftAlignedHeading(Heading):
+    """Heading that renders left-aligned instead of centered."""
+    
+    def __rich_console__(self, console, options):
+        text = self.text
+        text.justify = "left"
+        yield Text()  # blank line before
+        yield text
+
+
+class LeftAlignedMarkdown(Markdown):
+    """Markdown renderer with left-aligned headers (like Amp/OpenCode)."""
+    
+    elements = {
+        **Markdown.elements,
+        "heading_open": LeftAlignedHeading,
+    }
 
 
 def render_diff_block(diff_content: str) -> Text:
@@ -90,21 +113,26 @@ class ThemedMarkdown(Markdown):
             yield self._render_markdown(self.original_markup, options)
     
     def _render_markdown(self, content: str, options) -> Text:
-        """Render markdown content to Text with enhanced styling."""
+        """Render markdown content to Text with Amp/OpenCode-style formatting."""
         from rich.console import Console
         from rich.theme import Theme
         
-        # Pre-process content to add :: style headers
-        processed = self._enhance_content(content)
+        # Pre-process: convert headers to custom format, then render
+        processed, headers = self._extract_headers(content)
         
+        # Theme matching Amp/OpenCode style
         themed_console = Console(
             theme=Theme({
-                "markdown.link": f"bold {self.LINK_COLOR}",
-                "markdown.link_url": f"dim {self.LINK_COLOR}",
-                "markdown.h1": "bold white",
-                "markdown.h2": f"bold {LIGHT_BLUE}",
-                "markdown.h3": f"bold {LIGHT_BLUE}",
+                "markdown.link": f"{CYAN}",
+                "markdown.link_url": f"dim {CYAN}",
                 "markdown.code": f"{YELLOW}",
+                "markdown.code_block": f"{WHITE}",
+                "markdown.strong": f"bold {STRONG}",
+                "markdown.emph": f"italic {WHITE}",
+                "markdown.item.bullet": f"{DIM}",
+                "markdown.item.number": f"{DIM}",
+                "markdown.block_quote": f"italic {DIM}",
+                "markdown.hr": f"{DIM}",
             }),
             force_terminal=True,
             width=options.max_width,
@@ -115,24 +143,108 @@ class ThemedMarkdown(Markdown):
         
         result = Text.from_ansi(capture.get())
         
-        # Post-process to highlight file paths
-        return self._highlight_paths(result)
+        # Post-process to highlight file paths and restore header colors
+        result = self._highlight_paths(result)
+        result = self._colorize_headers(result, headers)
+        
+        return result
     
-    def _enhance_content(self, content: str) -> str:
-        """Pre-process markdown content to enhance headers with :: prefix style."""
+    def _extract_headers(self, content: str) -> tuple[str, list[str]]:
+        """Convert headers to bold text and track them for coloring."""
         lines = content.split('\n')
         result = []
+        headers = []
+        in_code_block = False
         
         for line in lines:
-            # Convert "# Header" or "## Header" to ":: Header" style in display
-            # We keep the markdown but the theme will style it
+            if line.strip().startswith('```'):
+                in_code_block = not in_code_block
+                result.append(line)
+                continue
+            
+            if in_code_block:
+                result.append(line)
+                continue
+            
+            # Convert headers to bold (will be colored in post-process)
+            header_match = re.match(r'^(#{1,6})\s+(.+)$', line)
+            if header_match:
+                text = header_match.group(2)
+                headers.append(text)
+                if result and result[-1].strip():
+                    result.append('')
+                result.append(f'**{text}**')
+                continue
+            
+            result.append(line)
+        
+        return '\n'.join(result), headers
+    
+    def _colorize_headers(self, text: Text, headers: list[str]) -> Text:
+        """Apply header color to extracted headers."""
+        plain = text.plain
+        for header in headers:
+            # Find the header text and apply blue color
+            idx = plain.find(header)
+            if idx >= 0:
+                text.stylize(Style(color=LIGHT_BLUE, bold=True), idx, idx + len(header))
+        return text
+    
+    def _enhance_content(self, content: str) -> str:
+        """Pre-process markdown content for cleaner Amp-style display.
+        
+        Converts headers to bold text (left-aligned) since Rich centers headers.
+        """
+        lines = content.split('\n')
+        result = []
+        in_code_block = False
+        
+        for line in lines:
+            # Track code blocks to avoid processing inside them
+            if line.strip().startswith('```'):
+                in_code_block = not in_code_block
+                result.append(line)
+                continue
+            
+            if in_code_block:
+                result.append(line)
+                continue
+            
+            # Convert markdown headers to styled bold text (left-aligned)
+            # This avoids Rich's default centered header rendering
+            header_match = re.match(r'^(#{1,6})\s+(.+)$', line)
+            if header_match:
+                level = len(header_match.group(1))
+                text = header_match.group(2)
+                # Use bold for headers, add blank line before for spacing
+                if result and result[-1].strip():
+                    result.append('')  # Add spacing before header
+                result.append(f'**{text}**')
+                continue
+            
             result.append(line)
         
         return '\n'.join(result)
     
     def _highlight_paths(self, text: Text) -> Text:
-        """Highlight file paths in the rendered text."""
-        # This is a simplified version - full implementation would regex match paths
+        """Highlight file paths and technical identifiers in rendered text."""
+        plain = text.plain
+        
+        # Pattern for file paths (e.g., src/foo/bar.py, ./file.ts, /absolute/path)
+        path_pattern = re.compile(
+            r'(?:^|[\s\(\[\{])('
+            r'(?:\./|/|[a-zA-Z]:/)?'  # Optional prefix
+            r'(?:[a-zA-Z0-9_\-]+/)*'   # Directory components
+            r'[a-zA-Z0-9_\-]+\.[a-zA-Z0-9]+'  # filename.ext
+            r')(?:[\s\)\]\}:,]|$)'
+        )
+        
+        # Find and highlight paths
+        for match in path_pattern.finditer(plain):
+            start = match.start(1)
+            end = match.end(1)
+            text.stylize(Style(color=CYAN), start, end)
+        
         return text
 
 
