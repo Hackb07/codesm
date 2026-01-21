@@ -6,6 +6,69 @@ An AI coding agent built with Python + Rust. Features a TUI interface, multi-pro
 
 ![codesm TUI](assets/image.png)
 
+## Mermaid Graph
+
+```mermaid
+
+flowchart TD
+    A[User Input] --> B[Agent.stream]
+    B --> C[ReAct Loop Execute]
+    C --> D[Claude API Call]
+    D --> E{Response Type?}
+    
+    E -->|Text Response| F[Add Assistant Message]
+    E -->|Tool Call| G[Extract Tool Call]
+    
+    G --> H{Tool Type?}
+    H -->|MCP Tool| I[MCP Execute Tool]
+    H -->|Built-in Tool| J[Direct Tool Execution]
+    
+    I --> K[Generate Python Code]
+    K --> L[Execute in Subprocess]
+    L --> M[MCP Client Call]
+    M --> N[MCP Server Process]
+    N --> O[Tool Implementation]
+    O --> P[Tool Result]
+    
+    J --> Q[Tool.execute method]
+    Q --> R{Tool Category?}
+    R -->|File Operations| S[Read/Write/Edit Tools]
+    R -->|Search Tools| T[Grep/Glob/CodeSearch]
+    R -->|External Tools| U[Bash/Web Tools]
+    R -->|Agent Tools| V[Task/Oracle/Subagents]
+    
+    S --> W[File System Operations]
+    T --> X[Search Operations]
+    U --> Y[External Process/API]
+    V --> Z[Spawn New Agent]
+    
+    W --> P
+    X --> P
+    Y --> P
+    Z --> AA[Subagent Results]
+    AA --> P
+    
+    P --> BB[Add Tool Result Message]
+    BB --> CC[Update Session State]
+    CC --> DD{More Tool Calls?}
+    
+    DD -->|Yes| G
+    DD -->|No| EE[Continue ReAct Loop]
+    EE --> D
+    
+    F --> FF[Session Complete]
+    
+    CC --> GG[Context Management]
+    GG --> HH[Message Storage]
+    HH --> II[Session Persistence]
+    
+    style A fill:#e1f5fe
+    style P fill:#c8e6c9
+    style N fill:#fff3e0
+    style Z fill:#f3e5f5
+
+```
+
 ## Quick Start
 
 ```bash
