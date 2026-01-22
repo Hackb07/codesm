@@ -1,88 +1,43 @@
-Finds the root cause of errors by analyzing stack traces, LSP diagnostics, and code.
+Find the root cause of an error given a stack trace, error message, or symptom description.
 
-This tool helps debug issues by analyzing error messages, stack traces, or symptom descriptions to locate the most likely source of bugs in the codebase. Integrates with LSP for real-time diagnostics and can attempt auto-fixes.
+## What it does
+1. **Parses stack traces** - Extracts file paths, line numbers, function calls
+2. **Reads relevant files** - Automatically loads files mentioned in the error
+3. **Searches codebase** - Finds related code patterns and definitions
+4. **Analyzes with AI** - Correlates information to identify root cause
+5. **Suggests fixes** - Provides concrete steps to resolve the issue
 
-# Parameters
+## Parameters
+- `error` (required): Stack trace, error message, or symptom description
+- `context`: Additional context (what you were doing, recent changes)
+- `files`: Specific files to examine
 
-- error: Error message, stack trace, or description of the bug/symptom
-- context: Optional additional context about when the error occurs
-- search_paths: Optional comma-separated paths to narrow the search scope
-- use_lsp: Optional boolean - include LSP diagnostics (default: true)
-- auto_fix: Optional boolean - attempt to auto-fix the bug (default: false)
-- run_command: Optional command to run to reproduce the error (e.g., "pytest test.py")
+## Output
+- **Error Analysis**: What the error means
+- **Root Cause**: Most likely location with confidence level
+- **Related Locations**: Other files that may be involved
+- **Suggested Fix**: Concrete steps to fix
+- **Investigation Commands**: Additional debugging steps if needed
 
-# When to Use
+## Examples
 
-Use this tool to:
-- Find root cause from stack traces
-- Debug cryptic error messages
-- Locate source of unexpected behavior
-- Trace error propagation through code
-- Use LSP to find compile-time errors
-- Run failing tests and analyze results
+Analyze a Python stack trace:
+```json
+{"error": "Traceback (most recent call last):\n  File \"app.py\", line 42, in handler\n    result = process(data)\nTypeError: 'NoneType' object is not subscriptable"}
+```
 
-<example>
-Analyze a stack trace
-[bug_localize error="TypeError: 'NoneType' object is not subscriptable
-  File 'src/api.py', line 45, in get_user
-  File 'src/db.py', line 23, in fetch_record"]
-</example>
+With additional context:
+```json
+{
+  "error": "Connection refused on port 5432",
+  "context": "Started happening after deploying new config changes"
+}
+```
 
-<example>
-Debug unexpected behavior with context
-[bug_localize error="API returns 500 when user has no profile" context="Only happens for new users"]
-</example>
-
-<example>
-Run a failing test and analyze
-[bug_localize error="Test failure" run_command="pytest tests/test_api.py::test_user -v"]
-</example>
-
-<example>
-Debug with LSP and auto-fix
-[bug_localize error="Module has type errors" use_lsp=true auto_fix=true]
-</example>
-
-<example>
-Narrow search scope
-[bug_localize error="Connection timeout" search_paths="src/database,src/network"]
-</example>
-
-# Output Format
-
-Returns a ranked list of likely bug locations with:
-- **Location**: File path and line number
-- **Confidence**: High/Medium/Low
-- **Explanation**: Why this location is suspect
-- **Fix Suggestion**: Potential remediation with code
-
-Additional sections:
-- **LSP Diagnostics**: Real-time errors from language server
-- **Auto-Fix Applied**: Results of automatic fix attempts (if enabled)
-
-# Analysis Process
-
-1. **Stack Trace Parsing**: Extracts file paths and line numbers
-2. **LSP Integration**: Collects real-time compiler/linter errors
-3. **Code Retrieval**: Reads relevant source files
-4. **Import Tracing**: Follows module dependencies
-5. **Pattern Matching**: Searches for related error patterns
-6. **Root Cause Analysis**: LLM correlates error with code
-
-# Best Practices
-
-1. Include full stack traces when available
-2. Provide context about when the error occurs
-3. Use run_command to capture fresh errors
-4. Enable LSP for compile-time issues
-5. Check highest-confidence results first
-6. Try auto_fix for common bug patterns
-
-# Common Bug Patterns
-
-- **NoneType errors**: Missing null checks, failed lookups
-- **KeyError/IndexError**: Invalid indices, missing keys
-- **TypeError**: Wrong argument types, incompatible operations
-- **ImportError**: Missing dependencies, circular imports
-- **AttributeError**: Wrong object type, missing attributes
-- **Async issues**: Missing await, race conditions
+Analyze specific files:
+```json
+{
+  "error": "Tests fail with 'undefined is not a function'",
+  "files": ["src/utils.js", "tests/utils.test.js"]
+}
+```

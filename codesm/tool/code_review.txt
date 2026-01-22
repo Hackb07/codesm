@@ -1,81 +1,33 @@
-Reviews code changes for bugs, security issues, and best practices.
+Review code changes for bugs, security issues, and code quality problems.
 
-This tool performs intelligent code review using an LLM to analyze code changes (staged files, branch comparisons, PRs, session changes, or specific files) and provides actionable feedback with optional auto-fix suggestions.
+## Modes
+- `staged` - Review staged git changes (default)
+- `branch:NAME` - Compare current HEAD with a branch (e.g., `branch:main`)
+- `commit:SHA` - Review a specific commit
+- `files:path1,path2` - Review specific files
 
-# Parameters
+## What it checks
+- **Bugs**: Logic errors, null checks, race conditions, off-by-one errors
+- **Security**: Injection attacks, hardcoded secrets, insecure patterns
+- **Performance**: N+1 queries, memory leaks, inefficient algorithms
+- **Quality**: Missing error handling, poor naming, duplication
 
-- mode: Review mode:
-  - "staged" - Git staged changes
-  - "branch:<name>" - Compare to branch (e.g., "branch:main")
-  - "files:<path1>,<path2>" - Specific files
-  - "pr:<number>" - GitHub PR (requires gh CLI)
-  - "session" - All files changed in current session
-- focus: Optional focus area - "bugs", "security", "performance", "style", or "all" (default: "all")
-- auto_fix: Optional boolean - Generate fix patches for issues (default: false)
+## Output
+Returns actionable feedback with severity, location, and fix suggestions.
 
-# When to Use
+## Examples
 
-Use this tool to:
-- Review staged changes before committing
-- Compare a feature branch against main
-- Review GitHub PRs directly
-- Review all changes made in the current session
-- Get feedback on specific files
-- Find potential bugs, security issues, and improvements
+Review staged changes:
+```json
+{"mode": "staged"}
+```
 
-<example>
-Review staged changes before commit
-[code_review mode="staged"]
-</example>
+Compare with main branch:
+```json
+{"mode": "branch:main"}
+```
 
-<example>
-Compare current branch against main
-[code_review mode="branch:main"]
-</example>
-
-<example>
-Review a GitHub PR
-[code_review mode="pr:123"]
-</example>
-
-<example>
-Review all session changes
-[code_review mode="session"]
-</example>
-
-<example>
-Review specific files with security focus and auto-fix
-[code_review mode="files:src/auth.py,src/api.py" focus="security" auto_fix=true]
-</example>
-
-# Output Format
-
-The tool returns a structured review with:
-- **Critical Issues**: Must-fix problems (bugs, security holes)
-- **Warnings**: Should-fix issues (potential problems)
-- **Suggestions**: Optional improvements
-
-Each issue includes:
-- Severity level
-- File and line location
-- Description of the problem
-- Suggested fix
-
-If auto_fix=true, includes:
-- **Auto-Fix Patches**: Code patches that can be applied to fix issues
-
-# Review Categories
-
-1. **Bugs & Errors**: Logic errors, null checks, race conditions
-2. **Security Issues**: Injection vulnerabilities, hardcoded secrets
-3. **Performance Issues**: N+1 queries, unnecessary loops, memory leaks
-4. **Code Quality**: Naming, error handling, duplication
-5. **Best Practices**: Type hints, documentation, tests
-
-# Best Practices
-
-1. Review before committing major changes
-2. Use focus="security" for auth/data handling code
-3. Fix critical issues before shipping
-4. Use "session" mode to review all your recent changes
-5. Enable auto_fix to get actionable code patches
+Review specific files:
+```json
+{"mode": "files:src/auth.py,src/api.py"}
+```
