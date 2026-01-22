@@ -1,0 +1,42 @@
+Read and extract relevant context from a past conversation thread.
+
+This tool fetches a thread by ID, analyzes its content, and uses AI to extract only the information relevant to your specific goal. This keeps context concise while preserving important details.
+
+## When to use this tool
+
+- After using `find_thread` to locate a relevant thread
+- When you need to apply the same approach from a past conversation
+- When you want to extract specific patterns, code, or decisions from a thread
+- When the user says "do what we did in thread X"
+
+## When NOT to use this tool
+
+- When you don't have a thread ID - use `find_thread` first
+- When working within the current thread (context is already available)
+
+## Parameters
+
+- **thread_id**: The session identifier (format: `session_YYYYMMDD_HHMMSS_ffffff`)
+- **goal**: A clear description of what information you're looking for. Be specific.
+
+# Examples
+
+Extract implementation approach from a thread
+```json
+{"thread_id": "session_20240115_143022_123456", "goal": "Extract the implementation approach and code patterns used for the authentication system"}
+```
+
+Get SQL queries from a database migration thread
+```json
+{"thread_id": "session_20240120_091500_789012", "goal": "Extract all SQL queries and migration steps discussed"}
+```
+
+Understand a bug fix
+```json
+{"thread_id": "session_20240118_162030_345678", "goal": "Describe the bug, its root cause, and the fix that was applied"}
+```
+
+Get configuration details
+```json
+{"thread_id": "session_20240122_110045_567890", "goal": "Extract the environment configuration and setup steps"}
+```

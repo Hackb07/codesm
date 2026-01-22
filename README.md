@@ -178,7 +178,7 @@ The system uses task-specialized models across three tiers:
 
 #### Other Smart Features
 - [x] Mermaid diagram generation
-- [ ] Thread search & cross-thread context
+- [x] Thread search & cross-thread context
 - [ ] Auto todo planning & tracking during tasks
 - [ ] File citations with clickable links
 - [x] Web page reading (WebFetch tool)

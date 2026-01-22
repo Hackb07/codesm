@@ -42,6 +42,8 @@ class ToolRegistry:
         from .oracle import OracleTool
         from .finder import FinderTool
         from .handoff import HandoffTool
+        from .find_thread import FindThreadTool
+        from .read_thread import ReadThreadTool
         from .orchestrate import OrchestrateTool, PipelineTool
         from .mermaid import MermaidTool, DiagramGeneratorTool
 
@@ -64,6 +66,13 @@ class ToolRegistry:
         # Handoff tool for context transfer to new threads
         handoff_tool = HandoffTool(parent_tools=self)
         self._tools[handoff_tool.name] = handoff_tool
+        
+        # Thread search tools for cross-thread context
+        find_thread_tool = FindThreadTool(parent_tools=self)
+        self._tools[find_thread_tool.name] = find_thread_tool
+        
+        read_thread_tool = ReadThreadTool(parent_tools=self)
+        self._tools[read_thread_tool.name] = read_thread_tool
         
         # Orchestration tools for multi-subagent coordination
         orchestrate_tool = OrchestrateTool(parent_tools=self)

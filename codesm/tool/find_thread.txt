@@ -1,0 +1,53 @@
+Find past conversation threads using a query DSL.
+
+## What this tool finds
+
+This tool searches through your past conversation sessions (threads) to find relevant discussions, solutions, or code changes you've worked on before.
+
+## Query syntax
+
+- **Keywords**: Bare words or quoted phrases for text search: `auth` or `"race condition"`
+- **File filter**: `file:path` to find threads that touched a file: `file:src/auth/login.py`
+- **Topic filter**: `topic:name` to scope to a topic category: `topic:bugfix` or `topic:feature`
+- **Date filters**: `after:date` and `before:date` to filter by date: `after:2024-01-15`, `after:7d`, `before:2w`
+- **Combine filters**: Use implicit AND: `auth file:src/foo.py topic:security after:7d`
+
+All matching is case-insensitive. File paths use partial matching. Date formats: ISO dates (`2024-01-15`), relative days (`7d`), weeks (`2w`), or months (`1m`).
+
+## Available topics
+
+feature, bugfix, refactor, docs, testing, config, review, research, planning, devops, performance, security, ui, api, database, other
+
+## When to use this tool
+
+- "Find threads where we discussed the authentication system"
+- "What thread last changed the database schema?"
+- "Find threads about performance optimization from last week"
+- "Show me recent bugfix threads"
+
+## When NOT to use this tool
+
+- If you need the actual content/context from a thread → use `read_thread` after finding it
+- For searching code in files → use `grep` or `finder`
+
+# Examples
+
+Find threads about authentication
+```json
+{"query": "authentication login", "limit": 10}
+```
+
+Find threads that modified a specific file
+```json
+{"query": "file:src/auth/jwt.py", "limit": 5}
+```
+
+Find bugfix threads from the last week
+```json
+{"query": "topic:bugfix after:7d"}
+```
+
+Find threads about API changes with a keyword
+```json
+{"query": "endpoint topic:api after:30d"}
+```
