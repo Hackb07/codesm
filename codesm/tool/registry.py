@@ -48,6 +48,9 @@ class ToolRegistry:
         from .read_thread import ReadThreadTool
         from .orchestrate import OrchestrateTool, PipelineTool
         from .mermaid import MermaidTool, DiagramGeneratorTool
+        from .code_review import CodeReviewTool
+        from .testgen import TestGenTool
+        from .bug_localize import BugLocalizeTool
 
         for tool_class in [ReadTool, WriteTool, EditTool, MultiEditTool, MultiFileEditTool, BashTool, GrepTool, GlobTool, WebFetchTool, WebSearchTool, DiagnosticsTool, CodeSearchTool, TodoTool, ListTool, BatchTool, PatchTool, SkillTool, UndoTool, RedoTool, LookAtTool]:
             tool = tool_class()
@@ -89,6 +92,16 @@ class ToolRegistry:
         
         diagram_tool = DiagramGeneratorTool(parent_tools=self)
         self._tools[diagram_tool.name] = diagram_tool
+        
+        # Intelligence layer tools
+        code_review_tool = CodeReviewTool(parent_tools=self)
+        self._tools[code_review_tool.name] = code_review_tool
+        
+        testgen_tool = TestGenTool(parent_tools=self)
+        self._tools[testgen_tool.name] = testgen_tool
+        
+        bug_localize_tool = BugLocalizeTool(parent_tools=self)
+        self._tools[bug_localize_tool.name] = bug_localize_tool
     
     def register(self, tool: Tool):
         """Register a tool"""

@@ -1,0 +1,86 @@
+Generates test cases for code in multiple languages.
+
+This tool analyzes source code and automatically generates comprehensive test cases, detecting the appropriate testing framework from existing tests in the project. Supports Python, TypeScript, JavaScript, Rust, and Go.
+
+# Parameters
+
+- file_path: Path to the file to generate tests for
+- function_name: Optional - specific function or class to test (tests all if not specified)
+- test_types: Optional - comma-separated types: "unit", "edge", "error" (default: all)
+- auto_write: Optional boolean - automatically write tests to appropriate location (default: false)
+- changed_only: Optional boolean - generate tests only for changed functions using git diff (default: false)
+
+# Supported Languages
+
+- **Python** (.py) - pytest, unittest
+- **TypeScript** (.ts, .tsx) - jest, vitest, mocha
+- **JavaScript** (.js, .jsx) - jest, vitest, mocha
+- **Rust** (.rs) - cargo test
+- **Go** (.go) - testing package
+
+# When to Use
+
+Use this tool to:
+- Generate initial test coverage for new code
+- Add edge case tests to existing test suites
+- Create error handling tests
+- Bootstrap test files for untested modules
+- Generate tests for recently changed functions
+
+<example>
+Generate tests for a Python file
+[testgen file_path="/home/user/project/src/utils.py"]
+</example>
+
+<example>
+Generate tests for a TypeScript file
+[testgen file_path="/home/user/project/src/api.ts"]
+</example>
+
+<example>
+Generate and auto-write tests
+[testgen file_path="/home/user/project/src/auth.py" auto_write=true]
+</example>
+
+<example>
+Generate tests for changed functions only
+[testgen file_path="/home/user/project/src/parser.py" changed_only=true]
+</example>
+
+<example>
+Generate only edge case tests for a specific function
+[testgen file_path="/home/user/project/src/parser.py" function_name="parse_json" test_types="edge,error"]
+</example>
+
+# Output Format
+
+Returns generated test code that:
+- Uses the project's existing test framework
+- Follows project naming conventions
+- Includes imports and fixtures
+- Covers happy path, edge cases, and error handling
+
+If auto_write=true:
+- Writes tests to appropriate location (tests/ directory)
+- Records in undo history for easy reverting
+
+# Test Categories
+
+1. **Unit Tests**: Basic functionality testing
+2. **Edge Cases**: Boundary conditions, empty inputs, large data
+3. **Error Handling**: Exception testing, invalid inputs
+
+# Framework Detection
+
+The tool detects testing framework by:
+1. Looking for existing test files in tests/ or language-specific patterns
+2. Checking imports (pytest, jest, vitest, etc.)
+3. Analyzing test patterns (def test_*, describe/it, etc.)
+
+# Best Practices
+
+1. Review generated tests before adding to codebase
+2. Adjust assertions based on actual expected behavior
+3. Add fixtures for complex test setups
+4. Mock external dependencies as needed
+5. Use changed_only for incremental test coverage
