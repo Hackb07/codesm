@@ -139,10 +139,88 @@ codesm supports two agent modes for different task types:
 - [x] MCP (Model Context Protocol) support
 - [x] Skill/plugin system
 - [x] Snapshot/undo system
-- [ ] Permission system
+- [x] Permission system
 - [ ] Web search tool improvements
 - [ ] Rust core performance
 - [X] Web Search
+
+#### CLI Features (from amp)
+- [ ] **`codesm login`** - Authenticate with API key or OAuth
+- [ ] **`codesm logout`** - Remove stored credentials
+- [ ] **`codesm update`** - Self-update CLI
+- [ ] **Thread Management CLI**:
+  - [ ] `codesm threads list` - List all threads/sessions
+  - [ ] `codesm threads new` - Create new thread
+  - [ ] `codesm threads continue` - Continue existing thread
+  - [ ] `codesm threads search` - Search threads
+  - [ ] `codesm threads share` - Share a thread (generate URL)
+  - [ ] `codesm threads rename` - Rename a thread
+  - [ ] `codesm threads archive` - Archive a thread
+  - [ ] `codesm threads delete` - Delete a thread
+  - [ ] `codesm threads handoff` - Create handoff thread from existing
+  - [ ] `codesm threads markdown` - Export thread as markdown
+  - [ ] `codesm threads replay` - Replay a thread
+- [ ] **Tool Management CLI**:
+  - [ ] `codesm tools list` - List all active tools (including MCP)
+  - [ ] `codesm tools show` - Show tool details
+  - [ ] `codesm tools make` - Create skeleton tool in toolbox
+  - [ ] `codesm tools use` - Invoke a tool directly from CLI
+- [ ] **Skill Management CLI**:
+  - [ ] `codesm skill add` - Install skills from source
+  - [ ] `codesm skill list` - List available skills
+  - [ ] `codesm skill remove` - Remove installed skill
+  - [ ] `codesm skill info` - Show skill information
+- [ ] **Permissions CLI**:
+  - [ ] `codesm permissions list` - List permission rules
+  - [ ] `codesm permissions test` - Test permissions
+  - [ ] `codesm permissions edit` - Edit permissions
+  - [ ] `codesm permissions add` - Add permission rule
+- [ ] **MCP OAuth**:
+  - [ ] `codesm mcp oauth login` - Register OAuth for MCP server
+  - [ ] `codesm mcp oauth logout` - Remove OAuth for MCP server
+  - [ ] `codesm mcp oauth status` - Show OAuth status
+  - [ ] `codesm mcp add` - Add MCP server configuration
+  - [ ] `codesm mcp remove` - Remove MCP server configuration
+  - [ ] `codesm mcp doctor` - Check MCP server health
+
+#### Execute Mode (from amp)
+- [ ] **`-x, --execute`** - Non-interactive execute mode (run prompt, print last message, exit)
+- [ ] **`--stream-json`** - Output in Claude Code-compatible stream JSON format
+- [ ] **`--stream-json-thinking`** - Include thinking blocks in stream JSON
+- [ ] **`--stream-json-input`** - Read JSON Lines from stdin
+- [ ] **`-l, --label`** - Add labels to threads
+- [ ] **Stdin piping** - `echo "message" | codesm` 
+- [ ] **Stdout redirect detection** - Auto-enable execute mode when redirecting
+
+#### Global Options (from amp)
+- [ ] **`--visibility`** - Set thread visibility (private, public, workspace, group)
+- [ ] **`--notifications / --no-notifications`** - Sound notifications toggle
+- [ ] **`--settings-file`** - Custom settings file path
+- [ ] **`--log-level`** - Set log level (error, warn, info, debug, audit)
+- [ ] **`--log-file`** - Set log file location
+- [ ] **`--dangerously-allow-all`** - Disable all confirmation prompts
+- [ ] **`--mcp-config`** - JSON config or file path for MCP servers
+- [ ] **`-m, --mode`** - Set agent mode (free, rush, smart)
+
+#### Settings System (from amp)
+- [ ] **JSON settings file** - `~/.config/codesm/settings.json`
+- [ ] **Settings reference**:
+  - [ ] `codesm.notifications.enabled` - Sound notifications
+  - [ ] `codesm.notifications.system.enabled` - System notifications when terminal unfocused
+  - [ ] `codesm.mcpServers` - MCP server configurations
+  - [ ] `codesm.tools.disable` - Array of tools to disable
+  - [ ] `codesm.tools.enable` - Glob patterns for tools to enable
+  - [ ] `codesm.network.timeout` - Network request timeout
+  - [ ] `codesm.permissions` - Permission rules
+  - [ ] `codesm.guardedFiles.allowlist` - File patterns allowed without confirmation
+  - [ ] `codesm.dangerouslyAllowAll` - Disable all prompts
+  - [ ] `codesm.fuzzy.alwaysIncludePaths` - Paths to always include in search
+  - [ ] `codesm.skills.path` - Additional skill directories
+  - [ ] `codesm.toolbox.path` - Toolbox scripts directory
+  - [ ] `codesm.git.commit.coauthor.enabled` - Add codesm as co-author
+  - [ ] `codesm.proxy` - Proxy URL for requests
+  - [ ] `codesm.updates.mode` - Update checking behavior
+  - [ ] `codesm.showCosts` - Show cost information
 
 #### Smart Multi-Model Architecture
 
@@ -203,7 +281,7 @@ The system uses task-specialized models across three tiers:
 - [x] **Multi-file Atomic Edits** - Transactional edits across files
 
 #### Context & Memory
-- [ ] **AGENTS.md Support** - Read project-specific instructions automatically
+- [x] **AGENTS.md Support** - Read project-specific instructions automatically
 - [ ] **Cross-Session Memory** - Remember user preferences and past solutions
 - [ ] **Codebase Indexing** - Pre-index repos for instant semantic search
 - [ ] **Git Integration** - Auto-commit, branch management, PR creation
@@ -338,8 +416,8 @@ The system uses task-specialized models across three tiers:
 ### Phase 1: Polish & Reliability (1-2 weeks)
 **Goal: Make it daily-drivable**
 - [x] **Undo/Redo system** - Critical for trust
-- [ ] **Permission prompts** - Ask before destructive ops
-- [ ] **AGENTS.md support** - Match Amp/Claude Code behavior
+- [x] **Permission prompts** - Ask before destructive ops
+- [x] **AGENTS.md support** - Match Amp/Claude Code behavior
 - [ ] **Streaming tool output** - Real-time feedback for bash/tests
 
 ### Phase 2: Differentiation (2-4 weeks)

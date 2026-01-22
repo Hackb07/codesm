@@ -2,6 +2,7 @@
 
 import typer
 import logging
+import sys
 from pathlib import Path
 
 # Configure logging
@@ -14,11 +15,148 @@ logging.basicConfig(
     ]
 )
 
+VERSION = "0.1.0"
+
+HELP_TEXT = """Codesm CLI
+
+Usage: codesm [options] [command]
+
+Commands:
+
+  run          Start the codesm agent (interactive TUI)
+  chat         Send a single message (non-interactive)
+  serve        Start HTTP API server
+  init         Initialize project with AGENTS.md
+  mcp          Manage MCP servers
+    list       List all configured MCP servers
+    test       Test connection to MCP servers
+    init       Create an example MCP configuration file
+
+Options:
+
+  --help
+      Show this message and exit.
+  -V, --version
+      Print the version number and exit.
+
+Environment variables:
+
+  ANTHROPIC_API_KEY      API key for Anthropic Claude models
+  OPENAI_API_KEY         API key for OpenAI models  
+  CODESM_MODEL           Default model to use (e.g., anthropic/claude-sonnet-4-20250514)
+  CODESM_LOG_LEVEL       Set log level (error, warn, info, debug)
+  CODESM_CONFIG          Path to config file (default: ~/.config/codesm/config.json)
+
+Examples:
+
+Start an interactive session:
+
+  $ codesm run
+
+Start an interactive session in a specific directory:
+
+  $ codesm run /path/to/project
+
+Send a single message (non-interactive):
+
+  $ codesm chat "explain this codebase"
+
+Send a message with a specific model:
+
+  $ codesm chat "fix the bug" --model anthropic/claude-sonnet-4-20250514
+
+Initialize project with AGENTS.md:
+
+  $ codesm init
+
+  This scans your project and generates an AGENTS.md file with detected:
+  - Language and frameworks
+  - Build, test, and lint commands  
+  - Code style guidelines
+
+Start the HTTP API server:
+
+  $ codesm serve --port 4096
+
+List configured MCP servers:
+
+  $ codesm mcp list
+
+Test MCP server connections:
+
+  $ codesm mcp test
+
+Configuration:
+
+Codesm can be configured using files in the following locations:
+
+  Project config:
+    ./mcp-servers.json          MCP server definitions
+    ./.codesm/mcp.json          Alternative MCP config location
+    ./AGENTS.md                 Project-specific agent instructions
+
+  User config:
+    ~/.config/codesm/config.json    User preferences
+    ~/.config/codesm/mcp.json       User MCP servers
+    ~/.config/codesm/AGENTS.md      Global agent instructions
+
+AGENTS.md:
+
+  Codesm automatically loads AGENTS.md files to customize agent behavior.
+  Supported files (in priority order):
+    - AGENTS.md
+    - AGENT.md
+    - CLAUDE.md
+    - CONTEXT.md
+    - .cursorrules
+    - .github/copilot-instructions.md
+
+  Run 'codesm init' to generate an AGENTS.md for your project.
+"""
+
+
+def version_callback(value: bool):
+    if value:
+        print(f"codesm {VERSION}")
+        raise typer.Exit()
+
+
+def help_callback(ctx: typer.Context, value: bool):
+    if value:
+        print(HELP_TEXT)
+        raise typer.Exit()
+
+
 app = typer.Typer(
     name="codesm",
     help="AI coding agent",
     add_completion=False,
+    invoke_without_command=True,
 )
+
+
+@app.callback()
+def main_callback(
+    ctx: typer.Context,
+    version: bool = typer.Option(
+        False,
+        "--version", "-V",
+        callback=version_callback,
+        is_eager=True,
+        help="Print the version number and exit.",
+    ),
+    help_flag: bool = typer.Option(
+        False,
+        "--help",
+        callback=help_callback,
+        is_eager=True,
+        help="Show this message and exit.",
+    ),
+):
+    """AI coding agent"""
+    if ctx.invoked_subcommand is None:
+        print(HELP_TEXT)
+        raise typer.Exit()
 
 
 @app.command()
@@ -88,6 +226,60 @@ def serve(
     """Start HTTP API server"""
     from codesm.server.server import start_server
     start_server(port=port, directory=directory)
+
+
+@app.command()
+def init(
+    directory: Path = typer.Argument(
+        Path("."),
+        help="Directory to initialize",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force", "-f",
+        help="Overwrite existing AGENTS.md",
+    ),
+    edit: bool = typer.Option(
+        False,
+        "--edit", "-e",
+        help="Open AGENTS.md in editor after creation",
+    ),
+):
+    """Initialize project with AGENTS.md"""
+    import os
+    from codesm.rules.init import init_agents_md, save_agents_md
+    from rich.console import Console
+
+    console = Console()
+    workspace = directory.resolve()
+    
+    content, already_exists = init_agents_md(workspace, force=force)
+    
+    if already_exists and not force:
+        console.print(f"[yellow]AGENTS.md already exists at {workspace / 'AGENTS.md'}[/yellow]")
+        console.print("Use --force to overwrite.")
+        raise typer.Exit(1)
+    
+    agents_path = save_agents_md(workspace, content)
+    console.print(f"[green]✓[/green] Created {agents_path}")
+    console.print()
+    console.print("[dim]Detected:[/dim]")
+    
+    from codesm.rules.init import scan_project
+    info = scan_project(workspace)
+    if info.language:
+        console.print(f"  Language: {info.language}")
+    if info.frameworks:
+        console.print(f"  Frameworks: {', '.join(info.frameworks)}")
+    if info.package_manager:
+        console.print(f"  Package manager: {info.package_manager}")
+    
+    console.print()
+    console.print("[dim]Edit AGENTS.md to customize agent behavior for your project.[/dim]")
+    
+    if edit:
+        editor = os.environ.get("EDITOR", "vim")
+        os.system(f"{editor} {agents_path}")
 
 
 # MCP subcommands
