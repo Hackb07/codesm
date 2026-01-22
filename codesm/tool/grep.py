@@ -3,11 +3,12 @@
 import asyncio
 from pathlib import Path
 from .base import Tool
+from codesm.util.citations import format_grep_output
 
 
 class GrepTool(Tool):
     name = "grep"
-    description = "Search for patterns in files using ripgrep."
+    description = "Search for patterns in files using ripgrep. Results include clickable file links."
     
     def get_parameters_schema(self) -> dict:
         return {
@@ -78,7 +79,9 @@ class GrepTool(Tool):
             elif proc.returncode != 0:
                 return f"Error: {stderr.decode()}"
             
-            return stdout.decode()[:10000]  # Limit output
+            raw_output = stdout.decode()[:10000]  # Limit output
+            # Format with clickable links
+            return format_grep_output(raw_output, base_dir=Path(path))
         except FileNotFoundError:
             return "Error: ripgrep (rg) not installed. Install with: apt install ripgrep"
         except Exception as e:

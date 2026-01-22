@@ -2,11 +2,12 @@
 
 from pathlib import Path
 from .base import Tool
+from codesm.util.citations import file_link_with_path
 
 
 class GlobTool(Tool):
     name = "glob"
-    description = "Find files matching a glob pattern."
+    description = "Find files matching a glob pattern. Returns clickable file links."
     
     def get_parameters_schema(self) -> dict:
         return {
@@ -59,7 +60,11 @@ class GlobTool(Tool):
                 f for f in files 
                 if fnmatch.fnmatch(f, pattern) and not self._should_exclude(Path(f))
             ][:limit]
-            return "\n".join(matches) if matches else "No files found"
+            if not matches:
+                return "No files found"
+            # Format as clickable links
+            links = [file_link_with_path(f) for f in matches]
+            return "\n".join(links)
         except ImportError:
             pass
         
@@ -71,6 +76,8 @@ class GlobTool(Tool):
             ][:limit]
             if not matches:
                 return "No files found"
-            return "\n".join(str(m) for m in matches)
+            # Format as clickable links
+            links = [file_link_with_path(m) for m in matches]
+            return "\n".join(links)
         except Exception as e:
             return f"Error: {e}"

@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from .base import Tool
+from codesm.util.citations import file_link_with_path
 
 
 class EditTool(Tool):
@@ -72,7 +73,8 @@ class EditTool(Tool):
                 stats_parts.append(f"-{lines_removed}")
             stats = " ".join(stats_parts) if stats_parts else "+0 -0"
 
-            result = f"**Edit** {path.name} {stats} Diff:\n\n{diff_output}"
+            file_link = file_link_with_path(path, start_line + 1 if 'start_line' in dir() else None)
+            result = f"**Edit** {file_link} {stats} Diff:\n\n{diff_output}"
 
             # Get LSP diagnostics for the edited file
             diagnostics_output = await self._get_diagnostics(str(path))

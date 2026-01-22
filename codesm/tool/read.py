@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from .base import Tool
+from codesm.util.citations import file_link_with_path
 
 # File extensions that need vision/special handling
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg", ".ico"}
@@ -70,7 +71,12 @@ class ReadTool(Tool):
                 f"{start + i}: {line}" 
                 for i, line in enumerate(selected)
             ]
-            return "\n".join(numbered)
+            
+            # Add file link header
+            link = file_link_with_path(path, start, end if end != len(lines) else None)
+            header = f"**{link}** (lines {start}-{end})\n\n"
+            
+            return header + "\n".join(numbered)
         except UnicodeDecodeError:
             # Binary file that wasn't in our list
             return f"Error: Cannot read file as text - appears to be binary. File: {path}"

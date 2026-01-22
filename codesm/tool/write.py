@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from .base import Tool
+from codesm.util.citations import file_link_with_path
 
 
 class WriteTool(Tool):
@@ -52,14 +53,16 @@ class WriteTool(Tool):
                 if len(new_lines) > 20:
                     diff_lines.append(f"  ... ({len(new_lines) - 20} more lines)")
                 diff_output = "```diff\n" + '\n'.join(diff_lines) + "\n```"
-                result = f"**Write** {path.name} +{len(new_lines)} lines (new file)\n\n{diff_output}"
+                file_link = file_link_with_path(path)
+                result = f"**Write** {file_link} +{len(new_lines)} lines (new file)\n\n{diff_output}"
             else:
                 # Existing file - show diff
                 diff_output = self._generate_diff(old_content, content)
                 old_lines = old_content.split('\n')
                 added = len(new_lines) - len(old_lines) if len(new_lines) > len(old_lines) else 0
                 removed = len(old_lines) - len(new_lines) if len(old_lines) > len(new_lines) else 0
-                result = f"**Write** {path.name} +{added} -{removed}\n\n{diff_output}"
+                file_link = file_link_with_path(path)
+                result = f"**Write** {file_link} +{added} -{removed}\n\n{diff_output}"
             
             diagnostics_output = await self._get_diagnostics(str(path))
             if diagnostics_output:

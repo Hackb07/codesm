@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Optional
 from .base import Tool
+from codesm.util.citations import file_link_with_path
 
 
 class DiagnosticsTool(Tool):
@@ -56,11 +57,12 @@ class DiagnosticsTool(Tool):
 
 
 def format_diagnostics(diagnostics: list) -> str:
-    """Format diagnostics for display."""
+    """Format diagnostics for display with clickable file links."""
     lines = []
     for d in diagnostics:
         severity_icon = {"error": "❌", "warning": "⚠️", "info": "ℹ️", "hint": "💡"}.get(d.severity, "•")
         source_str = f" [{d.source}]" if d.source else ""
-        lines.append(f"{severity_icon} {d.path}:{d.line}:{d.column}{source_str}")
+        file_link = file_link_with_path(d.path, d.line)
+        lines.append(f"{severity_icon} {file_link}:{d.column}{source_str}")
         lines.append(f"   {d.message}")
     return "\n".join(lines)

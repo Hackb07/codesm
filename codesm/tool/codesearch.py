@@ -8,6 +8,7 @@ import pickle
 from pathlib import Path
 from typing import Optional
 from .base import Tool
+from codesm.util.citations import file_link_with_path
 
 # Cache directory for embeddings
 CACHE_DIR = Path.home() / ".cache" / "codesm" / "embeddings"
@@ -358,8 +359,9 @@ class CodeSearchTool(Tool):
                     continue
                 seen_files.add(key)
                 
-                # Format result
-                rel_path = Path(chunk["file"]).relative_to(root) if chunk["file"].startswith(str(root)) else chunk["file"]
+                # Format result with clickable link
+                file_path = Path(chunk["file"])
+                link = file_link_with_path(file_path, chunk['start_line'], chunk['end_line'])
                 
                 # Truncate content for display
                 preview = chunk["content"][:500]
@@ -367,7 +369,7 @@ class CodeSearchTool(Tool):
                     preview += "\n..."
                 
                 results.append(
-                    f"### {rel_path}:{chunk['start_line']}-{chunk['end_line']} (score: {sim:.3f})\n"
+                    f"### {link} (score: {sim:.3f})\n"
                     f"```\n{preview}\n```"
                 )
             

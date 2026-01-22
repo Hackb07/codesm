@@ -180,7 +180,7 @@ The system uses task-specialized models across three tiers:
 - [x] Mermaid diagram generation
 - [x] Thread search & cross-thread context
 - [ ] Auto todo planning & tracking during tasks
-- [ ] File citations with clickable links
+- [x] File citations with clickable links
 - [x] Web page reading (WebFetch tool)
 - [x] Parallel tool execution optimization
 
