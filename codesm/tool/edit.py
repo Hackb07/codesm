@@ -90,6 +90,9 @@ class EditTool(Tool):
                     snapshot_hash=pre_edit_hash,
                 )
 
+            # Format on save
+            format_msg = await self._format_file(path, session)
+
             # Generate styled diff for display
             diff_output = self._generate_styled_diff(path, old_content, new_content, content)
 
@@ -106,6 +109,10 @@ class EditTool(Tool):
             file_link = file_link_with_path(path, start_line + 1 if 'start_line' in dir() else None)
             result = f"**Edit** {file_link} {stats} Diff:\n\n{diff_output}"
 
+            # Add format info if formatted
+            if format_msg:
+                result += f"\n\n{format_msg}"
+
             # Get LSP diagnostics for the edited file
             diagnostics_output = await self._get_diagnostics(str(path))
             if diagnostics_output:
@@ -119,6 +126,21 @@ class EditTool(Tool):
             return result
         except Exception as e:
             return f"Error editing file: {e}"
+
+    async def _format_file(self, path: Path, session) -> str:
+        """Format file if formatter is available and enabled."""
+        try:
+            from codesm.formatter import format_file_if_enabled
+            session_id = session.id if session else None
+            result = await format_file_if_enabled(path, session_id)
+            
+            if result and result.formatted:
+                return f"✨ Formatted with {result.formatter}"
+            elif result and not result.success and result.error:
+                return f"⚠️ Format failed: {result.error}"
+            return ""
+        except Exception:
+            return ""
     
     def _generate_styled_diff(
         self, path: Path, old_content: str, new_content: str, full_content: str
