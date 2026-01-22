@@ -1,0 +1,165 @@
+---
+title: Tools
+description: Configure tools available to the agent.
+---
+
+Tools are the capabilities available to the codesm agent. You can configure which tools are enabled and how they behave.
+
+---
+
+## Built-in Tools
+
+| Tool | Description |
+|------|-------------|
+| `read` | Read file contents |
+| `write` | Create new files |
+| `edit` | Modify existing files |
+| `bash` | Execute shell commands |
+| `grep` | Search with regex patterns |
+| `glob` | Find files by pattern |
+| `ls` | List directory contents |
+| `finder` | Semantic code search |
+| `oracle` | Expert advisor (uses secondary LLM) |
+| `task` | Spawn sub-agents |
+| `todo` | Track session tasks |
+| `undo` | Undo file changes |
+| `redo` | Redo undone changes |
+| `refactor` | Get refactoring suggestions |
+| `code_review` | Review code changes |
+| `testgen` | Generate tests |
+| `websearch` | Search the web |
+| `webfetch` | Fetch web pages |
+| `mermaid` | Generate diagrams |
+
+---
+
+## Tool Configuration
+
+### Enable/Disable Tools
+
+```json title="codesm.json"
+{
+  "tools": {
+    "enabled": ["read", "edit", "grep", "bash"],
+    "disabled": ["websearch", "webfetch"]
+  }
+}
+```
+
+### Tool-Specific Settings
+
+```json title="codesm.json"
+{
+  "tools": {
+    "bash": {
+      "timeout": 30,
+      "allowed_commands": ["npm", "pnpm", "git", "make"],
+      "denied_commands": ["rm -rf", "sudo"]
+    },
+    "edit": {
+      "max_file_size": 100000,
+      "backup": true
+    },
+    "grep": {
+      "max_results": 100,
+      "context_lines": 3
+    }
+  }
+}
+```
+
+---
+
+## Tool Permissions
+
+Set approval requirements per tool:
+
+```json title="codesm.json"
+{
+  "permissions": {
+    "tools": {
+      "read": "allow",
+      "write": "ask",
+      "edit": "ask",
+      "bash": "ask"
+    }
+  }
+}
+```
+
+See [Permissions](/docs/permissions) for details.
+
+---
+
+## Bash Tool
+
+The bash tool executes shell commands. Configure it carefully:
+
+### Command Allowlist
+
+```json
+{
+  "tools": {
+    "bash": {
+      "allowed_commands": [
+        "npm",
+        "pnpm",
+        "node",
+        "python",
+        "git",
+        "make",
+        "cargo",
+        "go"
+      ]
+    }
+  }
+}
+```
+
+### Command Denylist
+
+```json
+{
+  "tools": {
+    "bash": {
+      "denied_commands": [
+        "rm -rf /",
+        "sudo",
+        "chmod 777",
+        "curl | bash"
+      ]
+    }
+  }
+}
+```
+
+### Timeout
+
+```json
+{
+  "tools": {
+    "bash": {
+      "timeout": 60
+    }
+  }
+}
+```
+
+---
+
+## MCP Tools
+
+Add tools from MCP servers:
+
+```json title="mcp-servers.json"
+{
+  "servers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"]
+    }
+  }
+}
+```
+
+See [MCP Servers](/docs/mcp-servers) for details.

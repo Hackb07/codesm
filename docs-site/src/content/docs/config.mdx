@@ -1,0 +1,121 @@
+---
+title: Config
+description: Configure codesm for your workflow.
+---
+
+codesm can be configured using a JSON configuration file or environment variables.
+
+---
+
+## Configuration File
+
+codesm looks for configuration in these locations (in order):
+
+1. `./codesm.json` - Project-specific config
+2. `~/.config/codesm/config.json` - User config
+
+### Example Config
+
+```json title="codesm.json"
+{
+  "$schema": "https://codesm.dev/config.json",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-20250514",
+  "theme": "dark",
+  "tui": {
+    "scroll_speed": 3
+  },
+  "permissions": {
+    "auto_approve_read": true,
+    "auto_approve_edit": false,
+    "auto_approve_bash": false
+  }
+}
+```
+
+---
+
+## Environment Variables
+
+### Provider Keys
+
+```bash
+# Anthropic
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+# OpenAI
+export OPENAI_API_KEY="sk-..."
+
+# OpenRouter
+export OPENROUTER_API_KEY="sk-or-..."
+
+# Ollama (local)
+export OLLAMA_BASE_URL="http://localhost:11434"
+```
+
+### Other Settings
+
+```bash
+# Default provider
+export CODESM_PROVIDER="anthropic"
+
+# Default model
+export CODESM_MODEL="claude-sonnet-4-20250514"
+
+# Data directory
+export CODESM_DATA_DIR="~/.local/share/codesm"
+
+# Log level
+export CODESM_LOG_LEVEL="INFO"
+```
+
+---
+
+## Options Reference
+
+### Top-level Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `provider` | string | `"anthropic"` | Default LLM provider |
+| `model` | string | varies | Default model ID |
+| `theme` | string | `"dark"` | UI theme |
+
+### TUI Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `tui.scroll_speed` | number | `3` | Scroll speed multiplier |
+| `tui.show_timestamps` | boolean | `false` | Show message timestamps |
+| `tui.show_token_count` | boolean | `true` | Show token usage |
+
+### Permission Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `permissions.auto_approve_read` | boolean | `true` | Auto-approve file reads |
+| `permissions.auto_approve_edit` | boolean | `false` | Auto-approve file edits |
+| `permissions.auto_approve_bash` | boolean | `false` | Auto-approve shell commands |
+
+---
+
+## Project Configuration
+
+You can create a project-specific `codesm.json` that overrides user settings:
+
+```json title="./codesm.json"
+{
+  "model": "claude-sonnet-4-20250514",
+  "rules": ["Always use TypeScript strict mode"],
+  "tools": {
+    "bash": {
+      "allowed_commands": ["npm", "pnpm", "node", "git"]
+    }
+  }
+}
+```
+
+This is useful for:
+- Enforcing coding standards per project
+- Restricting tool usage
+- Setting project-specific models

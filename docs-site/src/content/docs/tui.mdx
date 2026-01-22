@@ -1,0 +1,162 @@
+---
+title: TUI
+description: Using the codesm terminal user interface.
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components"
+
+codesm provides an interactive terminal interface (TUI) for working on your projects with an LLM.
+
+Running codesm starts the TUI for the current directory:
+
+```bash
+codesm
+```
+
+Or start it for a specific directory:
+
+```bash
+codesm /path/to/project
+```
+
+---
+
+## File References
+
+Reference files in your messages using `@`. This does a fuzzy file search:
+
+:::tip
+Use `@` to quickly reference files in your prompts.
+:::
+
+```txt frame="none"
+How is auth handled in @src/auth/index.ts?
+```
+
+The content of the file is automatically added to the conversation.
+
+---
+
+## Bash Commands
+
+Start a message with `!` to run a shell command:
+
+```bash frame="none"
+!ls -la
+```
+
+The output is added to the conversation as a tool result.
+
+---
+
+## Slash Commands
+
+Type `/` followed by a command name to execute actions:
+
+```bash frame="none"
+/help
+```
+
+### Available Commands
+
+| Command | Description | Keybind |
+|---------|-------------|---------|
+| `/help` | Show help dialog | `ctrl+x h` |
+| `/new` | Start a new session | `ctrl+x n` |
+| `/sessions` | List sessions | `ctrl+x l` |
+| `/compact` | Summarize context | `ctrl+x c` |
+| `/undo` | Undo last message | `ctrl+x u` |
+| `/redo` | Redo undone message | `ctrl+x r` |
+| `/init` | Create AGENTS.md | `ctrl+x i` |
+| `/models` | List models | `ctrl+x m` |
+| `/themes` | List themes | `ctrl+x t` |
+| `/export` | Export to Markdown | `ctrl+x x` |
+| `/exit` | Exit codesm | `ctrl+x q` |
+
+---
+
+## Modes
+
+codesm has two modes, switchable with **Tab**:
+
+### Build Mode (Default)
+
+The agent can read and write files, run commands, and make changes.
+
+### Plan Mode
+
+The agent can only read files and suggest changes. Use this for:
+- Understanding unfamiliar code
+- Planning complex changes
+- Getting explanations without modifications
+
+---
+
+## Input Modes
+
+### Normal Input
+
+Type your message and press **Enter** to send.
+
+### Multi-line Input
+
+Press **Shift+Enter** for a new line, or use the editor command.
+
+### External Editor
+
+Use `/editor` or `ctrl+x e` to compose in your `$EDITOR`:
+
+<Tabs>
+  <TabItem label="Linux/macOS">
+  ```bash
+  export EDITOR="code --wait"
+  ```
+  </TabItem>
+
+  <TabItem label="Windows">
+  ```powershell
+  $env:EDITOR = "code --wait"
+  ```
+  </TabItem>
+</Tabs>
+
+---
+
+## Images
+
+Drag and drop images into the terminal to add them to your prompt.
+
+:::tip
+Images are great for UI mockups, error screenshots, or diagrams.
+:::
+
+Supported formats: PNG, JPEG, GIF, WebP
+
+---
+
+## Token Display
+
+The status bar shows:
+- **Token count**: Total tokens in context
+- **Cost estimate**: Estimated cost for the session
+- **Model**: Current model being used
+
+```txt frame="none"
+39,413  20%  ($0.29)
+```
+
+---
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Tab` | Switch modes (Build/Plan) |
+| `Enter` | Send message |
+| `Shift+Enter` | New line |
+| `Ctrl+C` | Cancel current operation |
+| `Ctrl+X` | Leader key for commands |
+| `↑/↓` | Navigate message history |
+| `Ctrl+L` | Clear screen |
+
+See [Keybinds](/docs/keybinds) for full customization.

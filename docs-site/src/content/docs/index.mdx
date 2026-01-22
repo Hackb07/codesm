@@ -1,0 +1,218 @@
+---
+title: Intro
+description: Get started with codesm.
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components"
+
+[**codesm**](/) is an open source AI coding agent built with Python. It's available as a terminal-based interface with a beautiful TUI powered by Textual.
+
+<div class="terminal-demo">
+  <div class="terminal-header">
+    <span class="terminal-button close"></span>
+    <span class="terminal-button minimize"></span>
+    <span class="terminal-button maximize"></span>
+    <span class="terminal-title">codesm | Homepage button color change</span>
+  </div>
+  <div class="terminal-body">
+    <div><span class="prompt">#</span> <span class="command">Homepage button color change workflow</span></div>
+    <br/>
+    <div><span class="output">Find the homepage button and make it blue</span></div>
+    <br/>
+    <div><span class="output">I'll search for the homepage button in the codebase.</span></div>
+    <div><span class="output">• Grep "homepage|home.*button|Home.*button"</span></div>
+    <div><span class="output">• Grep "Homepage"</span></div>
+    <br/>
+    <div><span class="output">Let me search more broadly for buttons and home-related elements:</span></div>
+    <div><span class="output">• Grep "Home" (18 matches)</span></div>
+    <div><span class="output">• Glob "**/*.tsx" (100 matches)</span></div>
+  </div>
+</div>
+
+Let's get started.
+
+---
+
+#### Prerequisites
+
+To use codesm, you'll need:
+
+1. Python 3.11 or later
+2. A modern terminal emulator like:
+   - [WezTerm](https://wezterm.org), cross-platform
+   - [Alacritty](https://alacritty.org), cross-platform
+   - [Ghostty](https://ghostty.org), Linux and macOS
+   - [Kitty](https://sw.kovidgoyal.net/kitty/), Linux and macOS
+
+3. API keys for the LLM providers you want to use.
+
+---
+
+## Install
+
+Install codesm using pip or uv:
+
+<Tabs>
+  <TabItem label="pip">
+  ```bash
+  pip install codesm
+  ```
+  </TabItem>
+
+  <TabItem label="uv">
+  ```bash
+  uv pip install codesm
+  ```
+  </TabItem>
+
+  <TabItem label="pipx">
+  ```bash
+  pipx install codesm
+  ```
+  </TabItem>
+</Tabs>
+
+Or install from source:
+
+```bash
+git clone https://github.com/codesm/codesm.git
+cd codesm
+uv sync
+```
+
+---
+
+## Configure
+
+With codesm you can use various LLM providers by configuring their API keys.
+
+1. Set up your provider API key:
+
+   ```bash
+   export ANTHROPIC_API_KEY="your-api-key"
+   # or
+   export OPENAI_API_KEY="your-api-key"
+   # or
+   export OPENROUTER_API_KEY="your-api-key"
+   ```
+
+2. Optionally, create a config file at `~/.config/codesm/config.json`:
+
+   ```json
+   {
+     "provider": "anthropic",
+     "model": "claude-sonnet-4-20250514"
+   }
+   ```
+
+[Learn more about providers](/docs/providers).
+
+---
+
+## Initialize
+
+Navigate to a project you want to work on:
+
+```bash
+cd /path/to/project
+```
+
+And run codesm:
+
+```bash
+codesm
+```
+
+Initialize codesm for your project by running:
+
+```bash frame="none"
+/init
+```
+
+This analyzes your project and creates an `AGENTS.md` file in the project root.
+
+:::tip
+You should commit your project's `AGENTS.md` file to Git.
+:::
+
+---
+
+## Usage
+
+You are now ready to use codesm! Here are some examples:
+
+---
+
+### Ask questions
+
+Ask codesm to explain the codebase:
+
+:::tip
+Use the `@` key to fuzzy search for files in the project.
+:::
+
+```txt frame="none"
+How is authentication handled in @src/auth/index.ts
+```
+
+---
+
+### Add features
+
+Ask codesm to add new features:
+
+1. **Create a plan**
+
+   Switch to Plan mode using the **Tab** key.
+
+   ```txt frame="none"
+   When a user deletes a note, flag it as deleted in the database.
+   Then create a screen that shows all recently deleted notes.
+   ```
+
+2. **Build the feature**
+
+   Switch back to Build mode and ask it to implement:
+
+   ```txt frame="none"
+   Sounds good! Go ahead and make the changes.
+   ```
+
+---
+
+### Make changes
+
+For straightforward changes:
+
+```txt frame="none"
+Add authentication to the /settings route. Look at how it's
+handled in @src/api/notes.ts and implement the same logic.
+```
+
+---
+
+### Undo changes
+
+Undo changes with `/undo`:
+
+```bash frame="none"
+/undo
+```
+
+Or redo with `/redo`:
+
+```bash frame="none"
+/redo
+```
+
+---
+
+## Customize
+
+Make codesm your own:
+
+- [Pick a theme](/docs/themes)
+- [Customize keybinds](/docs/keybinds)
+- [Configure permissions](/docs/permissions)
+- [Add MCP servers](/docs/mcp-servers)
+- [Create custom skills](/docs/skills)

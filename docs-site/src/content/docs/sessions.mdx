@@ -1,0 +1,164 @@
+---
+title: Sessions
+description: Managing conversation sessions in codesm.
+---
+
+Sessions are the core unit of conversation state in codesm.
+
+---
+
+## What is a Session?
+
+A session contains:
+- Your conversation history
+- Tool call results
+- File changes made
+- Context and state
+
+Sessions are stored locally and can be resumed later.
+
+---
+
+## Managing Sessions
+
+### List Sessions
+
+View all sessions for the current project:
+
+```bash frame="none"
+/sessions
+```
+
+Or use the keybind: `ctrl+x l`
+
+### New Session
+
+Start a fresh session:
+
+```bash frame="none"
+/new
+```
+
+### Resume Session
+
+Select a session from the list or resume by ID:
+
+```bash
+codesm --session <session-id>
+```
+
+### Continue Last Session
+
+```bash
+codesm --continue
+```
+
+---
+
+## Session Storage
+
+Sessions are stored in:
+
+```
+~/.local/share/codesm/storage/
+├── session/{project-id}/{session-id}.json
+├── message/{session-id}/{message-id}.json
+└── part/{message-id}/{part-id}.json
+```
+
+### Backup Sessions
+
+```bash
+cp -r ~/.local/share/codesm/storage ~/codesm-backup
+```
+
+### Clear Old Sessions
+
+```bash
+# Clear sessions older than 30 days
+codesm sessions clear --older-than 30d
+```
+
+---
+
+## Context Management
+
+### Compaction
+
+When context grows too large, use `/compact`:
+
+```bash frame="none"
+/compact
+```
+
+This summarizes the conversation while preserving key information.
+
+### Token Limits
+
+codesm automatically manages context to stay within model limits:
+
+| Model | Context Limit |
+|-------|---------------|
+| Claude 4 | 200K tokens |
+| GPT-4.1 | 128K tokens |
+| Llama 3.1 | 128K tokens |
+
+---
+
+## Export & Share
+
+### Export to Markdown
+
+Export the current session:
+
+```bash frame="none"
+/export
+```
+
+This opens the conversation in your `$EDITOR`.
+
+### Share (Coming Soon)
+
+Share sessions with your team:
+
+```bash frame="none"
+/share
+```
+
+---
+
+## Undo/Redo
+
+Sessions track file changes for undo/redo:
+
+### Undo
+
+Revert the last message and any file changes:
+
+```bash frame="none"
+/undo
+```
+
+:::tip
+Your project must be a Git repository for undo to work.
+:::
+
+### Redo
+
+Restore undone changes:
+
+```bash frame="none"
+/redo
+```
+
+---
+
+## Session Forking
+
+Fork a session to explore different approaches:
+
+```bash frame="none"
+/fork
+```
+
+This creates a new session with the same context.

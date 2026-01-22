@@ -1,0 +1,259 @@
+---
+title: Architecture
+description: Understanding codesm's internal architecture.
+---
+
+This document explains codesm's architecture for contributors and advanced users.
+
+---
+
+## High-Level Overview
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                        TUI Layer                              │
+│  ┌─────────────────┐  ┌─────────────────┐                    │
+│  │   Textual App   │  │    Widgets      │                    │
+│  │   (Chat, Side)  │  │  (Input, Tree)  │                    │
+│  └────────┬────────┘  └────────┬────────┘                    │
+└───────────┼────────────────────┼─────────────────────────────┘
+            │                    │
+            ▼                    ▼
+┌──────────────────────────────────────────────────────────────┐
+│                        Agent Layer                            │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐        │
+│  │    Agent     │  │    Loop      │  │   Prompt     │        │
+│  │  Orchestrator│  │   Manager    │  │   Builder    │        │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘        │
+└─────────┼─────────────────┼─────────────────┼────────────────┘
+          │                 │                 │
+          ▼                 ▼                 ▼
+┌──────────────────────────────────────────────────────────────┐
+│                       Provider Layer                          │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐              │
+│  │  Anthropic │  │   OpenAI   │  │   Ollama   │              │
+│  └────────────┘  └────────────┘  └────────────┘              │
+└──────────────────────────────────────────────────────────────┘
+          │                 │                 │
+          ▼                 ▼                 ▼
+┌──────────────────────────────────────────────────────────────┐
+│                        Tool Layer                             │
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐      │
+│  │  Read  │ │  Edit  │ │  Bash  │ │  Grep  │ │  MCP   │      │
+│  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘      │
+└──────────────────────────────────────────────────────────────┘
+          │
+          ▼
+┌──────────────────────────────────────────────────────────────┐
+│                      Storage Layer                            │
+│  ┌──────────────────────────────────────────────────────────┐│
+│  │  Sessions  │  Messages  │  Config  │  Auth  │  Logs      ││
+│  └──────────────────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Package Structure
+
+```
+codesm/
+├── agent/           # Agent orchestration
+│   ├── agent.py     # Main agent class
+│   ├── loop.py      # ReAct loop
+│   ├── prompt.py    # System prompts
+│   └── router.py    # Model routing
+│
+├── provider/        # LLM providers
+│   ├── base.py      # Provider interface
+│   ├── anthropic.py
+│   ├── openai.py
+│   ├── openrouter.py
+│   └── ollama.py
+│
+├── tool/            # Built-in tools
+│   ├── base.py      # Tool interface
+│   ├── registry.py  # Tool registration
+│   ├── read.py
+│   ├── edit.py
+│   ├── bash.py
+│   └── ...
+│
+├── session/         # Conversation state
+│   ├── session.py
+│   ├── message.py
+│   └── context.py
+│
+├── tui/             # Terminal UI
+│   ├── app.py       # Main TUI app
+│   ├── chat.py      # Chat widget
+│   └── sidebar.py   # Session list
+│
+├── storage/         # Persistence
+│   └── storage.py   # JSON file storage
+│
+├── mcp/             # MCP integration
+│   ├── client.py
+│   └── manager.py
+│
+├── config/          # Configuration
+│   ├── config.py
+│   └── schema.py
+│
+└── cli.py           # CLI entry point
+```
+
+---
+
+## Agent System
+
+### ReAct Loop
+
+codesm uses a ReAct (Reason + Act) loop:
+
+1. **Reason**: LLM analyzes the task
+2. **Act**: Execute tools based on analysis
+3. **Observe**: Process tool results
+4. **Repeat**: Continue until task complete
+
+```python
+async def run_loop(self, message: str):
+    while not self.is_complete:
+        # Get LLM response
+        response = await self.provider.generate(
+            messages=self.messages,
+            tools=self.tools,
+        )
+        
+        # Process tool calls
+        if response.tool_calls:
+            results = await self.execute_tools(response.tool_calls)
+            self.messages.append(results)
+        
+        # Check for completion
+        if response.is_final:
+            self.is_complete = True
+```
+
+### Sub-agents
+
+The `task` tool spawns independent agents:
+
+```python
+async def spawn_subagent(self, task: str):
+    subagent = Agent(
+        model=self.config.subagent_model,
+        tools=self.subagent_tools,
+        max_steps=20,
+    )
+    return await subagent.run(task)
+```
+
+---
+
+## Tool System
+
+### Tool Interface
+
+```python
+class Tool(ABC):
+    name: str
+    description: str
+    
+    @abstractmethod
+    def get_parameters_schema(self) -> dict:
+        """Return JSON schema for parameters."""
+        pass
+    
+    @abstractmethod
+    async def execute(self, args: dict, context: dict) -> str:
+        """Execute the tool and return result."""
+        pass
+```
+
+### Tool Registration
+
+```python
+from codesm.tool.registry import ToolRegistry
+
+registry = ToolRegistry()
+registry.register(MyCustomTool())
+```
+
+---
+
+## Storage
+
+### File-Based Storage
+
+Sessions are stored as JSON files:
+
+```
+~/.local/share/codesm/storage/
+├── session/{project-id}/{session-id}.json
+├── message/{session-id}/{message-id}.json
+└── part/{message-id}/{part-id}.json
+```
+
+### Storage Operations
+
+```python
+from codesm.storage import Storage
+
+# Read
+session = await Storage.read(["session", project_id, session_id])
+
+# Write
+await Storage.write(["session", project_id, session_id], data)
+
+# List
+sessions = await Storage.list(["session", project_id])
+```
+
+---
+
+## Configuration
+
+### Config Loading Order
+
+1. Default config (built-in)
+2. User config (`~/.config/codesm/config.json`)
+3. Project config (`./codesm.json`)
+4. Environment variables
+5. CLI arguments
+
+Later sources override earlier ones.
+
+---
+
+## MCP Integration
+
+### MCP Client
+
+```python
+from codesm.mcp import MCPManager
+
+manager = MCPManager()
+await manager.load_servers("mcp-servers.json")
+
+# Get tool from MCP server
+tool = manager.get_tool("github", "create_issue")
+result = await tool.execute(args)
+```
+
+---
+
+## Performance
+
+### Optimizations
+
+- Lazy tool loading
+- Incremental context building
+- Parallel tool execution
+- Streaming responses
+
+### Memory Management
+
+- Context compaction for long sessions
+- Message offloading to storage
+- Garbage collection hooks

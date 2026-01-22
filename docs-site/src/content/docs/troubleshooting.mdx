@@ -1,0 +1,134 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for codesm.
+---
+
+## Common Issues
+
+### API Key Not Found
+
+**Error:** `API key not found for provider: anthropic`
+
+**Solution:**
+
+1. Set the environment variable:
+   ```bash
+   export ANTHROPIC_API_KEY="your-key"
+   ```
+
+2. Or add to your shell profile (`~/.bashrc`, `~/.zshrc`):
+   ```bash
+   echo 'export ANTHROPIC_API_KEY="your-key"' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+---
+
+### TUI Display Issues
+
+**Problem:** Characters not rendering correctly
+
+**Solution:**
+
+1. Use a modern terminal with good Unicode support:
+   - WezTerm, Alacritty, Ghostty, Kitty
+
+2. Set the correct locale:
+   ```bash
+   export LANG=en_US.UTF-8
+   export LC_ALL=en_US.UTF-8
+   ```
+
+3. Use a font with good glyph coverage (e.g., JetBrains Mono, Fira Code)
+
+---
+
+### Slow Responses
+
+**Problem:** Model responses are taking too long
+
+**Possible causes:**
+
+1. **Large context**: Use `/compact` to summarize the session
+2. **Network issues**: Check your internet connection
+3. **Provider rate limits**: Wait and retry
+4. **Complex prompts**: Break into smaller tasks
+
+---
+
+### Memory Usage
+
+**Problem:** High memory usage during long sessions
+
+**Solution:**
+
+1. Use `/compact` to reduce context size
+2. Start a new session with `/new`
+3. Increase system swap if needed
+
+---
+
+### Permission Denied
+
+**Problem:** `Permission denied` when editing files
+
+**Solution:**
+
+1. Check file permissions:
+   ```bash
+   ls -la /path/to/file
+   ```
+
+2. Run codesm with appropriate permissions
+3. Avoid editing system files without sudo
+
+---
+
+### Git Integration Issues
+
+**Problem:** `/undo` or `/redo` not working
+
+**Requirements:**
+
+- Project must be a Git repository
+- Git must be installed and accessible
+- No uncommitted changes blocking the operation
+
+**Solution:**
+
+```bash
+# Initialize git if needed
+git init
+
+# Check git status
+git status
+```
+
+---
+
+## Debug Mode
+
+Run codesm with debug logging:
+
+```bash
+CODESM_LOG_LEVEL=DEBUG codesm
+```
+
+View logs:
+
+```bash
+cat ~/.local/share/codesm/codesm.log
+```
+
+---
+
+## Getting Help
+
+1. Check the [GitHub Issues](https://github.com/codesm/codesm/issues)
+2. Join our [Discord](https://discord.gg/codesm)
+3. Search existing discussions
+4. Open a new issue with:
+   - codesm version (`codesm --version`)
+   - Python version (`python --version`)
+   - OS and terminal
+   - Error message and stack trace

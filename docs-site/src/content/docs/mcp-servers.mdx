@@ -1,0 +1,214 @@
+---
+title: MCP Servers
+description: Extend codesm with Model Context Protocol servers.
+---
+
+MCP (Model Context Protocol) allows extending codesm with external tools and resources.
+
+---
+
+## What is MCP?
+
+MCP is a protocol for connecting AI agents to external tools and data sources. It provides:
+
+- **Tools**: Additional capabilities (GitHub, databases, APIs)
+- **Resources**: External data sources
+- **Prompts**: Reusable prompt templates
+
+---
+
+## Configuration
+
+Create `mcp-servers.json` in your project or config directory:
+
+```json title="mcp-servers.json"
+{
+  "servers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "env": {
+        "ALLOWED_PATHS": "/home/user/projects"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Popular MCP Servers
+
+### GitHub
+
+Access GitHub repositories, issues, and PRs:
+
+```json
+{
+  "github": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-github"],
+    "env": {
+      "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+    }
+  }
+}
+```
+
+### Filesystem
+
+Secure file access:
+
+```json
+{
+  "filesystem": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+    "env": {
+      "ALLOWED_PATHS": "${HOME}/projects"
+    }
+  }
+}
+```
+
+### PostgreSQL
+
+Database access:
+
+```json
+{
+  "postgres": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-postgres"],
+    "env": {
+      "DATABASE_URL": "${DATABASE_URL}"
+    }
+  }
+}
+```
+
+### Brave Search
+
+Web search:
+
+```json
+{
+  "brave-search": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+    "env": {
+      "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+    }
+  }
+}
+```
+
+---
+
+## Using MCP Tools
+
+Once configured, MCP tools are available to the agent:
+
+```txt frame="none"
+Create a GitHub issue for this bug
+```
+
+The agent will use the GitHub MCP server automatically.
+
+### Listing MCP Tools
+
+```bash frame="none"
+/mcp tools
+```
+
+---
+
+## Server Management
+
+### Start Servers
+
+Servers start automatically when needed.
+
+### Restart Servers
+
+```bash frame="none"
+/mcp restart github
+```
+
+### Stop Servers
+
+```bash frame="none"
+/mcp stop github
+```
+
+### Check Status
+
+```bash frame="none"
+/mcp status
+```
+
+---
+
+## Custom MCP Servers
+
+Build your own MCP server:
+
+```python title="my_server.py"
+from mcp import Server, Tool
+
+server = Server("my-server")
+
+@server.tool()
+async def my_tool(query: str) -> str:
+    """My custom tool."""
+    return f"Result for: {query}"
+
+if __name__ == "__main__":
+    server.run()
+```
+
+Configure it:
+
+```json
+{
+  "my-server": {
+    "command": "python",
+    "args": ["my_server.py"]
+  }
+}
+```
+
+---
+
+## Environment Variables
+
+Reference environment variables in config:
+
+```json
+{
+  "env": {
+    "API_KEY": "${MY_API_KEY}",
+    "BASE_URL": "${MY_BASE_URL:-https://default.com}"
+  }
+}
+```
+
+The `:-` syntax provides a default value.
+
+---
+
+## Security
+
+MCP servers run with the same permissions as codesm. Best practices:
+
+1. **Review servers**: Only use trusted MCP servers
+2. **Limit access**: Use minimal required permissions
+3. **Protect secrets**: Use environment variables, not hardcoded values
+4. **Monitor usage**: Check MCP server logs

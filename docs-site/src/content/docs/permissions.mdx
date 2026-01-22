@@ -1,0 +1,198 @@
+---
+title: Permissions
+description: Control what the agent can do.
+---
+
+Permissions control what actions the agent can take without asking.
+
+---
+
+## Permission Levels
+
+| Level | Description |
+|-------|-------------|
+| `allow` | Always allow (no prompt) |
+| `ask` | Ask for approval each time |
+| `deny` | Never allow |
+
+---
+
+## Default Permissions
+
+| Action | Default |
+|--------|---------|
+| Read files | `allow` |
+| Write files | `ask` |
+| Edit files | `ask` |
+| Run bash commands | `ask` |
+| Network requests | `ask` |
+
+---
+
+## Configuring Permissions
+
+### Global Permissions
+
+```json title="~/.config/codesm/config.json"
+{
+  "permissions": {
+    "read": "allow",
+    "write": "ask",
+    "edit": "ask",
+    "bash": "ask",
+    "network": "ask"
+  }
+}
+```
+
+### Project Permissions
+
+Override for specific projects:
+
+```json title="./codesm.json"
+{
+  "permissions": {
+    "edit": "allow",
+    "bash": {
+      "npm *": "allow",
+      "git *": "allow",
+      "*": "ask"
+    }
+  }
+}
+```
+
+---
+
+## Bash Permissions
+
+Fine-grained control over shell commands:
+
+### Pattern Matching
+
+```json
+{
+  "permissions": {
+    "bash": {
+      "npm run *": "allow",
+      "npm test": "allow",
+      "git status": "allow",
+      "git push *": "ask",
+      "rm *": "deny",
+      "sudo *": "deny",
+      "*": "ask"
+    }
+  }
+}
+```
+
+### Allowlist Mode
+
+Only allow specific commands:
+
+```json
+{
+  "permissions": {
+    "bash": {
+      "mode": "allowlist",
+      "commands": [
+        "npm",
+        "pnpm",
+        "node",
+        "python",
+        "git",
+        "make",
+        "cargo"
+      ]
+    }
+  }
+}
+```
+
+---
+
+## File Permissions
+
+Control file access by path:
+
+```json
+{
+  "permissions": {
+    "files": {
+      "read": {
+        "*": "allow",
+        "**/.env*": "deny",
+        "**/secrets/**": "deny"
+      },
+      "write": {
+        "src/**": "allow",
+        "tests/**": "allow",
+        "*": "ask"
+      }
+    }
+  }
+}
+```
+
+---
+
+## YOLO Mode
+
+For trusted projects, enable full auto-approval:
+
+```json title="codesm.json"
+{
+  "permissions": {
+    "mode": "yolo"
+  }
+}
+```
+
+:::caution
+Only use YOLO mode in trusted environments. The agent will execute any command without confirmation.
+:::
+
+---
+
+## Trusted Workspaces
+
+Mark directories as trusted:
+
+```json title="~/.config/codesm/config.json"
+{
+  "trusted_workspaces": [
+    "~/projects/my-app",
+    "~/projects/another-app"
+  ]
+}
+```
+
+Trusted workspaces use permissive defaults.
+
+---
+
+## Session Overrides
+
+Temporarily override permissions:
+
+```bash
+codesm --auto-approve
+```
+
+Or in the TUI:
+
+```bash frame="none"
+/yolo
+```
+
+This enables auto-approval for the current session only.
+
+---
+
+## Best Practices
+
+1. **Start restrictive**: Use `ask` as default
+2. **Allowlist commands**: Only allow known-safe commands
+3. **Protect secrets**: Deny access to `.env` files
+4. **Review regularly**: Check permission prompts
+5. **Use project configs**: Different projects need different permissions

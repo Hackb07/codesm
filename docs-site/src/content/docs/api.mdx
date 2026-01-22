@@ -1,0 +1,292 @@
+---
+title: API Reference
+description: HTTP API for integrating with codesm.
+---
+
+codesm provides an HTTP API for programmatic access.
+
+---
+
+## Starting the Server
+
+```bash
+codesm server --port 8080
+```
+
+Or in config:
+
+```json title="codesm.json"
+{
+  "server": {
+    "enabled": true,
+    "port": 8080,
+    "host": "127.0.0.1"
+  }
+}
+```
+
+---
+
+## Authentication
+
+### API Key
+
+Set an API key:
+
+```json title="codesm.json"
+{
+  "server": {
+    "api_key": "${CODESM_API_KEY}"
+  }
+}
+```
+
+Include in requests:
+
+```bash
+curl -H "Authorization: Bearer $CODESM_API_KEY" \
+  http://localhost:8080/api/sessions
+```
+
+---
+
+## Endpoints
+
+### Sessions
+
+#### List Sessions
+
+```
+GET /api/sessions
+```
+
+Response:
+```json
+{
+  "sessions": [
+    {
+      "id": "session-abc123",
+      "title": "Feature implementation",
+      "created_at": "2025-01-15T10:30:00Z",
+      "updated_at": "2025-01-15T11:45:00Z"
+    }
+  ]
+}
+```
+
+#### Get Session
+
+```
+GET /api/sessions/{session_id}
+```
+
+#### Create Session
+
+```
+POST /api/sessions
+Content-Type: application/json
+
+{
+  "directory": "/path/to/project"
+}
+```
+
+#### Delete Session
+
+```
+DELETE /api/sessions/{session_id}
+```
+
+---
+
+### Messages
+
+#### Send Message
+
+```
+POST /api/sessions/{session_id}/messages
+Content-Type: application/json
+
+{
+  "content": "Explain the main function",
+  "mode": "build"
+}
+```
+
+Response (streaming):
+```
+event: text
+data: {"content": "The main function..."}
+
+event: tool_call
+data: {"tool": "read", "args": {"path": "src/main.py"}}
+
+event: done
+data: {"message_id": "msg-xyz789"}
+```
+
+#### List Messages
+
+```
+GET /api/sessions/{session_id}/messages
+```
+
+---
+
+### Tools
+
+#### Execute Tool
+
+```
+POST /api/tools/{tool_name}
+Content-Type: application/json
+
+{
+  "args": {
+    "path": "src/main.py"
+  },
+  "context": {
+    "cwd": "/path/to/project"
+  }
+}
+```
+
+#### List Tools
+
+```
+GET /api/tools
+```
+
+Response:
+```json
+{
+  "tools": [
+    {
+      "name": "read",
+      "description": "Read file contents",
+      "parameters": { ... }
+    }
+  ]
+}
+```
+
+---
+
+### Models
+
+#### List Models
+
+```
+GET /api/models
+```
+
+#### Set Model
+
+```
+POST /api/config/model
+Content-Type: application/json
+
+{
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-20250514"
+}
+```
+
+---
+
+## Streaming
+
+Message responses use Server-Sent Events:
+
+```javascript
+const eventSource = new EventSource(
+  '/api/sessions/abc/messages/stream'
+);
+
+eventSource.addEventListener('text', (e) => {
+  const data = JSON.parse(e.data);
+  console.log('Text:', data.content);
+});
+
+eventSource.addEventListener('tool_call', (e) => {
+  const data = JSON.parse(e.data);
+  console.log('Tool:', data.tool);
+});
+
+eventSource.addEventListener('done', () => {
+  eventSource.close();
+});
+```
+
+---
+
+## Python SDK
+
+```python
+from codesm import Client
+
+client = Client(base_url="http://localhost:8080")
+
+# Create session
+session = await client.sessions.create(
+    directory="/path/to/project"
+)
+
+# Send message
+async for event in client.messages.stream(
+    session_id=session.id,
+    content="Explain the codebase"
+):
+    if event.type == "text":
+        print(event.content, end="")
+    elif event.type == "tool_call":
+        print(f"\n[{event.tool}]")
+
+# List sessions
+sessions = await client.sessions.list()
+```
+
+---
+
+## Error Handling
+
+Errors return JSON with status codes:
+
+```json
+{
+  "error": {
+    "code": "session_not_found",
+    "message": "Session with ID 'abc' not found"
+  }
+}
+```
+
+| Status | Meaning |
+|--------|---------|
+| 400 | Bad request |
+| 401 | Unauthorized |
+| 404 | Not found |
+| 429 | Rate limited |
+| 500 | Server error |
+
+---
+
+## Rate Limiting
+
+Default limits:
+
+- 100 requests/minute per IP
+- 10 concurrent sessions
+
+Configure in:
+
+```json title="codesm.json"
+{
+  "server": {
+    "rate_limit": {
+      "requests_per_minute": 100,
+      "concurrent_sessions": 10
+    }
+  }
+}
+```

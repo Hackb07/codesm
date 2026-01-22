@@ -1,0 +1,180 @@
+---
+title: Providers
+description: Configure LLM providers for codesm.
+---
+
+codesm supports multiple LLM providers out of the box.
+
+---
+
+## Supported Providers
+
+| Provider | Models | Notes |
+|----------|--------|-------|
+| **Anthropic** | Claude 4, Claude 3.5 | Recommended for coding |
+| **OpenAI** | GPT-4.1, GPT-4o | Good general purpose |
+| **OpenRouter** | 100+ models | Pay-per-use, multi-provider |
+| **Ollama** | Llama, Codestral, etc. | Local, free, private |
+
+---
+
+## Anthropic
+
+The recommended provider for coding tasks.
+
+### Setup
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-api03-..."
+```
+
+### Config
+
+```json title="codesm.json"
+{
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-20250514"
+}
+```
+
+### Available Models
+
+| Model | Best For |
+|-------|----------|
+| `claude-sonnet-4-20250514` | Complex coding tasks |
+| `claude-3-5-sonnet-20241022` | General coding |
+| `claude-3-5-haiku-20241022` | Fast, simple tasks |
+
+---
+
+## OpenAI
+
+### Setup
+
+```bash
+export OPENAI_API_KEY="sk-..."
+```
+
+### Config
+
+```json title="codesm.json"
+{
+  "provider": "openai",
+  "model": "gpt-4.1"
+}
+```
+
+### Available Models
+
+| Model | Best For |
+|-------|----------|
+| `gpt-4.1` | Latest, best quality |
+| `gpt-4o` | Fast, good quality |
+| `gpt-4o-mini` | Fast, economical |
+
+---
+
+## OpenRouter
+
+Access 100+ models through a single API.
+
+### Setup
+
+```bash
+export OPENROUTER_API_KEY="sk-or-..."
+```
+
+### Config
+
+```json title="codesm.json"
+{
+  "provider": "openrouter",
+  "model": "anthropic/claude-sonnet-4-20250514"
+}
+```
+
+### Popular Models
+
+| Model | Provider |
+|-------|----------|
+| `anthropic/claude-sonnet-4-20250514` | Anthropic |
+| `openai/gpt-4.1` | OpenAI |
+| `google/gemini-2.5-pro` | Google |
+| `deepseek/deepseek-coder` | DeepSeek |
+
+---
+
+## Ollama (Local)
+
+Run models locally for privacy and cost savings.
+
+### Setup
+
+1. Install Ollama from [ollama.ai](https://ollama.ai)
+2. Pull a model:
+   ```bash
+   ollama pull codestral
+   ```
+
+### Config
+
+```json title="codesm.json"
+{
+  "provider": "ollama",
+  "model": "codestral"
+}
+```
+
+### Recommended Models
+
+| Model | Size | Best For |
+|-------|------|----------|
+| `codestral` | 22B | Code generation |
+| `llama3.1:70b` | 70B | Complex reasoning |
+| `llama3.1:8b` | 8B | Fast responses |
+| `deepseek-coder:33b` | 33B | Code understanding |
+
+---
+
+## Switching Providers
+
+### Command Line
+
+```bash
+codesm --provider openai --model gpt-4.1
+```
+
+### In TUI
+
+Use the `/models` command to switch models:
+
+```txt frame="none"
+/models
+```
+
+Or set temporarily in your message:
+
+```txt frame="none"
+Using gpt-4.1: Explain this algorithm
+```
+
+---
+
+## Cost Tracking
+
+codesm tracks token usage and estimated costs:
+
+```txt frame="none"
+Session: 45,231 tokens (~$0.32)
+```
+
+Set spending limits in config:
+
+```json title="codesm.json"
+{
+  "limits": {
+    "session_max_cost": 5.00,
+    "daily_max_cost": 20.00
+  }
+}
+```

@@ -1,0 +1,221 @@
+---
+title: Skills
+description: Load specialized capabilities for specific tasks.
+---
+
+Skills are specialized instruction sets that enhance codesm for specific tasks.
+
+---
+
+## What are Skills?
+
+Skills provide:
+- Domain-specific instructions
+- Specialized workflows
+- Pre-configured tool usage
+- Best practice templates
+
+Think of skills as "expert modes" for different types of work.
+
+---
+
+## Using Skills
+
+### Loading a Skill
+
+Use the `/skill` command:
+
+```bash frame="none"
+/skill react
+```
+
+Or reference in your prompt:
+
+```txt frame="none"
+Using the react skill, create a new component
+```
+
+### Listing Skills
+
+```bash frame="none"
+/skills
+```
+
+---
+
+## Built-in Skills
+
+| Skill | Description |
+|-------|-------------|
+| `react` | React component development |
+| `python` | Python best practices |
+| `typescript` | TypeScript patterns |
+| `testing` | Test writing |
+| `docs` | Documentation |
+| `refactoring` | Code improvement |
+| `debugging` | Bug finding |
+| `security` | Security review |
+
+---
+
+## Skill Structure
+
+Skills are Markdown files with frontmatter:
+
+```markdown title="skills/react.md"
+---
+name: react
+description: React component development
+tools: [read, write, edit, grep]
+---
+
+# React Development
+
+When creating React components:
+
+1. Use functional components with hooks
+2. Follow the component structure:
+   - Props interface
+   - Component function
+   - Styled components or CSS modules
+3. Include proper TypeScript types
+4. Add JSDoc comments
+
+## File Naming
+
+- Components: `PascalCase.tsx`
+- Hooks: `useCamelCase.ts`
+- Utils: `camelCase.ts`
+
+## Example Component
+
+\`\`\`tsx
+interface ButtonProps {
+  label: string;
+  onClick: () => void;
+}
+
+export function Button({ label, onClick }: ButtonProps) {
+  return (
+    <button onClick={onClick}>
+      {label}
+    </button>
+  );
+}
+\`\`\`
+```
+
+---
+
+## Custom Skills
+
+### Project Skills
+
+Create skills in your project:
+
+```
+project/
+└── .codesm/
+    └── skills/
+        ├── api.md
+        └── components.md
+```
+
+### Global Skills
+
+Add to your config directory:
+
+```
+~/.config/codesm/skills/
+├── my-skill.md
+└── another-skill.md
+```
+
+---
+
+## Skill Properties
+
+### Frontmatter
+
+```yaml
+---
+name: skill-name
+description: What this skill does
+tools: [read, edit, grep]
+model: claude-sonnet-4-20250514
+auto_load: false
+triggers:
+  - pattern: "create.*component"
+  - pattern: "react"
+---
+```
+
+| Property | Description |
+|----------|-------------|
+| `name` | Unique identifier |
+| `description` | Human-readable description |
+| `tools` | Required tools |
+| `model` | Preferred model |
+| `auto_load` | Load automatically |
+| `triggers` | Patterns that trigger loading |
+
+### Content
+
+The Markdown content is injected into the system prompt when the skill is active.
+
+---
+
+## Auto-Loading Skills
+
+Skills can load automatically based on context:
+
+```yaml
+---
+name: python
+auto_load: true
+triggers:
+  - file_pattern: "*.py"
+  - directory: "python/"
+---
+```
+
+Or based on prompt patterns:
+
+```yaml
+triggers:
+  - pattern: "django"
+  - pattern: "flask"
+  - pattern: "python"
+```
+
+---
+
+## Combining Skills
+
+Load multiple skills:
+
+```bash frame="none"
+/skill react typescript testing
+```
+
+Or in prompts:
+
+```txt frame="none"
+Using react and testing skills, create a tested component
+```
+
+---
+
+## Skill Discovery
+
+Find community skills:
+
+```bash frame="none"
+/skills search react
+```
+
+Install from URL:
+
+```bash frame="none"
+/skills install https://github.com/user/skill-repo
+```

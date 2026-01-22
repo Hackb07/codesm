@@ -1,0 +1,279 @@
+---
+title: Custom Tools
+description: Build your own tools for codesm.
+---
+
+Extend codesm with custom tools for your specific needs.
+
+---
+
+## Tool Interface
+
+Every tool implements the `Tool` base class:
+
+```python
+from codesm.tool.base import Tool
+
+class MyTool(Tool):
+    name = "my_tool"
+    description = "Does something useful."
+    
+    def get_parameters_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The query to process",
+                },
+            },
+            "required": ["query"],
+        }
+    
+    async def execute(self, args: dict, context: dict) -> str:
+        query = args["query"]
+        cwd = context.get("cwd")
+        
+        # Do something useful
+        result = f"Processed: {query}"
+        
+        return result
+```
+
+---
+
+## Registering Tools
+
+### In Code
+
+```python
+from codesm.tool.registry import ToolRegistry
+
+registry = ToolRegistry()
+registry.register(MyTool())
+```
+
+### Via Plugin
+
+Create a plugin package:
+
+```python title="my_plugin/__init__.py"
+from codesm.plugin import Plugin
+from .tools import MyTool, AnotherTool
+
+class MyPlugin(Plugin):
+    name = "my-plugin"
+    
+    def get_tools(self):
+        return [MyTool(), AnotherTool()]
+```
+
+Install and configure:
+
+```json title="codesm.json"
+{
+  "plugins": ["my-plugin"]
+}
+```
+
+---
+
+## Tool Context
+
+The `context` dict provides:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `cwd` | `Path` | Current working directory |
+| `session` | `Session` | Current session |
+| `config` | `Config` | codesm config |
+| `registry` | `ToolRegistry` | Access other tools |
+
+### Using Context
+
+```python
+async def execute(self, args: dict, context: dict) -> str:
+    cwd = context["cwd"]
+    session = context["session"]
+    
+    # Access another tool
+    registry = context["registry"]
+    grep_tool = registry.get("grep")
+    grep_result = await grep_tool.execute(
+        {"pattern": "TODO"},
+        context
+    )
+    
+    return f"Found: {grep_result}"
+```
+
+---
+
+## Parameter Schema
+
+Use JSON Schema to define parameters:
+
+```python
+def get_parameters_schema(self) -> dict:
+    return {
+        "type": "object",
+        "properties": {
+            "path": {
+                "type": "string",
+                "description": "File path to process",
+            },
+            "format": {
+                "type": "string",
+                "enum": ["json", "yaml", "toml"],
+                "default": "json",
+                "description": "Output format",
+            },
+            "recursive": {
+                "type": "boolean",
+                "default": False,
+                "description": "Process recursively",
+            },
+        },
+        "required": ["path"],
+    }
+```
+
+---
+
+## Async Operations
+
+Tools should use async for I/O:
+
+```python
+import aiohttp
+
+async def execute(self, args: dict, context: dict) -> str:
+    url = args["url"]
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            data = await response.text()
+    
+    return f"Fetched {len(data)} bytes"
+```
+
+---
+
+## Error Handling
+
+Return clear error messages:
+
+```python
+async def execute(self, args: dict, context: dict) -> str:
+    path = Path(args["path"])
+    
+    if not path.exists():
+        return f"Error: File not found: {path}"
+    
+    if not path.is_file():
+        return f"Error: Not a file: {path}"
+    
+    try:
+        content = path.read_text()
+        return f"Read {len(content)} characters"
+    except PermissionError:
+        return f"Error: Permission denied: {path}"
+```
+
+---
+
+## Tool Description
+
+Load descriptions from files:
+
+```txt title="my_tool.txt"
+Process files with custom logic.
+
+Use this tool when you need to:
+- Do X
+- Handle Y
+- Process Z
+
+Examples:
+- {"path": "src/main.py"}
+- {"path": "src/utils", "recursive": true}
+```
+
+The description is loaded automatically if `my_tool.txt` exists.
+
+---
+
+## Testing Tools
+
+```python
+import pytest
+from codesm.tool.registry import ToolRegistry
+from my_plugin.tools import MyTool
+
+@pytest.fixture
+def registry():
+    r = ToolRegistry()
+    r.register(MyTool())
+    return r
+
+@pytest.mark.asyncio
+async def test_my_tool(registry, tmp_path):
+    context = {"cwd": tmp_path}
+    
+    result = await registry.execute(
+        "my_tool",
+        {"query": "test"},
+        context
+    )
+    
+    assert "Processed" in result
+```
+
+---
+
+## Example: Database Tool
+
+```python
+import asyncpg
+from codesm.tool.base import Tool
+
+class DatabaseTool(Tool):
+    name = "database"
+    description = "Execute SQL queries."
+    
+    def __init__(self):
+        super().__init__()
+        self._pool = None
+    
+    async def _get_pool(self):
+        if not self._pool:
+            self._pool = await asyncpg.create_pool(
+                dsn=os.environ.get("DATABASE_URL")
+            )
+        return self._pool
+    
+    def get_parameters_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "SQL query to execute",
+                },
+            },
+            "required": ["query"],
+        }
+    
+    async def execute(self, args: dict, context: dict) -> str:
+        query = args["query"]
+        
+        # Safety check
+        if any(kw in query.upper() for kw in ["DROP", "DELETE", "TRUNCATE"]):
+            return "Error: Destructive queries not allowed"
+        
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query)
+        
+        return f"Results:\n{rows}"
+```

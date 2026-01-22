@@ -1,0 +1,170 @@
+---
+title: Tools
+description: Understanding the tools codesm uses.
+---
+
+codesm uses tools to interact with your codebase. The agent decides which tools to use based on your request.
+
+---
+
+## Core Tools
+
+### read
+
+Read file contents:
+
+```txt frame="none"
+Read the config file at src/config.py
+```
+
+The agent will use the `read` tool to fetch file contents.
+
+### write
+
+Create new files:
+
+```txt frame="none"
+Create a new test file for the User model
+```
+
+### edit
+
+Modify existing files:
+
+```txt frame="none"
+Add error handling to the login function
+```
+
+### bash
+
+Execute shell commands:
+
+```txt frame="none"
+Run the tests for the auth module
+```
+
+:::caution
+Bash commands require approval by default. See [Permissions](/docs/permissions).
+:::
+
+---
+
+## Search Tools
+
+### grep
+
+Search for patterns:
+
+```txt frame="none"
+Find all uses of the deprecated API
+```
+
+### glob
+
+Find files by pattern:
+
+```txt frame="none"
+Find all Python test files
+```
+
+### finder
+
+Semantic code search:
+
+```txt frame="none"
+Find where user authentication is implemented
+```
+
+---
+
+## Intelligence Tools
+
+### oracle
+
+Get expert advice for complex problems:
+
+```txt frame="none"
+Review the authentication architecture
+```
+
+The oracle is a secondary LLM that helps with planning and debugging.
+
+### refactor
+
+Get refactoring suggestions:
+
+```txt frame="none"
+Suggest improvements for src/utils.py
+```
+
+### code_review
+
+Review code changes:
+
+```txt frame="none"
+Review my staged changes
+```
+
+---
+
+## Task Management
+
+### task
+
+Spawn sub-agents for parallel work:
+
+```txt frame="none"
+Implement the API and UI in parallel
+```
+
+### todo
+
+Track items during a session:
+
+```txt frame="none"
+Add "write tests" to the todo list
+```
+
+---
+
+## Tool Visibility
+
+See what tools the agent is using with `/details`:
+
+```bash frame="none"
+/details
+```
+
+This toggles detailed tool execution output:
+
+```txt
+• Read src/auth.py (245 lines)
+• Grep "authenticate" (3 matches)
+• Edit src/auth.py:45-52
+```
+
+---
+
+## Tool Permissions
+
+Control which tools require approval:
+
+```json title="codesm.json"
+{
+  "permissions": {
+    "tools": {
+      "read": "allow",
+      "edit": "ask",
+      "bash": "ask",
+      "write": "ask"
+    }
+  }
+}
+```
+
+Options:
+- `allow` - Always allow
+- `ask` - Ask for approval
+- `deny` - Never allow
+
+See [Permissions](/docs/permissions) for more details.

@@ -1,0 +1,165 @@
+---
+title: Themes
+description: Customize the codesm appearance.
+---
+
+codesm supports custom themes to match your terminal aesthetic.
+
+---
+
+## Changing Themes
+
+### In TUI
+
+```bash frame="none"
+/themes
+```
+
+Select from the available themes.
+
+### Keybind
+
+`ctrl+x t` opens the theme selector.
+
+### Config
+
+```json title="codesm.json"
+{
+  "theme": "dark"
+}
+```
+
+---
+
+## Built-in Themes
+
+| Theme | Description |
+|-------|-------------|
+| `dark` | Dark background (default) |
+| `light` | Light background |
+| `monokai` | Monokai color scheme |
+| `dracula` | Dracula color scheme |
+| `nord` | Nord color scheme |
+| `gruvbox` | Gruvbox color scheme |
+
+---
+
+## Custom Themes
+
+Create custom themes in your config:
+
+```json title="codesm.json"
+{
+  "themes": {
+    "custom": {
+      "background": "#1a1b26",
+      "foreground": "#c0caf5",
+      "primary": "#7aa2f7",
+      "secondary": "#bb9af7",
+      "accent": "#7dcfff",
+      "error": "#f7768e",
+      "warning": "#e0af68",
+      "success": "#9ece6a",
+      "muted": "#565f89",
+      "border": "#3b4261"
+    }
+  },
+  "theme": "custom"
+}
+```
+
+---
+
+## Color Reference
+
+### Background Colors
+
+| Key | Usage |
+|-----|-------|
+| `background` | Main background |
+| `surface` | Elevated surfaces |
+| `panel` | Side panels |
+
+### Text Colors
+
+| Key | Usage |
+|-----|-------|
+| `foreground` | Primary text |
+| `muted` | Secondary text |
+| `accent` | Links and highlights |
+
+### Semantic Colors
+
+| Key | Usage |
+|-----|-------|
+| `primary` | Primary actions |
+| `secondary` | Secondary elements |
+| `error` | Errors and critical |
+| `warning` | Warnings |
+| `success` | Success states |
+
+### UI Colors
+
+| Key | Usage |
+|-----|-------|
+| `border` | Borders |
+| `selection` | Selected text |
+| `cursor` | Cursor color |
+
+---
+
+## Syntax Highlighting
+
+Configure code highlighting:
+
+```json title="codesm.json"
+{
+  "syntax": {
+    "theme": "github-dark",
+    "languages": {
+      "python": "monokai",
+      "typescript": "dracula"
+    }
+  }
+}
+```
+
+Supported syntax themes:
+- `github-dark`
+- `github-light`
+- `monokai`
+- `dracula`
+- `nord`
+- `one-dark`
+
+---
+
+## Terminal Compatibility
+
+For best results, use a terminal with:
+
+- True color support (24-bit)
+- Unicode support
+- A patched font (for icons)
+
+Recommended terminals:
+- WezTerm
+- Alacritty
+- Ghostty
+- Kitty
+- iTerm2
+
+---
+
+## Accessibility
+
+Enable high contrast mode:
+
+```json title="codesm.json"
+{
+  "accessibility": {
+    "high_contrast": true,
+    "reduce_motion": true
+  }
+}
+```

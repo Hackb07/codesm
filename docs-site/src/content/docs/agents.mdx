@@ -1,0 +1,188 @@
+---
+title: Agents
+description: Configure agent personas and behaviors.
+---
+
+Agents are different personas with varying capabilities. Each agent has its own set of tools and permissions.
+
+---
+
+## Built-in Agents
+
+| Agent | Description | Tools |
+|-------|-------------|-------|
+| `build` | Full access, default agent | All tools |
+| `plan` | Read-only exploration | Read, grep, glob |
+| `explore` | Fast codebase search | Finder, grep, glob |
+
+---
+
+## Switching Agents
+
+### In TUI
+
+Use **Tab** to switch between Build and Plan modes:
+
+```txt frame="none"
+<TAB>
+```
+
+### Via Command
+
+```bash frame="none"
+/agent plan
+```
+
+---
+
+## Custom Agents
+
+Define custom agents in `codesm.json`:
+
+```json title="codesm.json"
+{
+  "agents": {
+    "reviewer": {
+      "description": "Code review specialist",
+      "tools": ["read", "grep", "code_review"],
+      "permissions": {
+        "edit": "deny",
+        "bash": "deny"
+      },
+      "model": "claude-sonnet-4-20250514",
+      "system_prompt": "You are a code reviewer. Focus on finding bugs, security issues, and suggesting improvements. Do not make changes."
+    },
+    "docs": {
+      "description": "Documentation writer",
+      "tools": ["read", "write", "grep"],
+      "permissions": {
+        "edit": "allow",
+        "bash": "deny"
+      },
+      "rules": [
+        "Only modify .md and .mdx files",
+        "Follow the existing documentation style"
+      ]
+    }
+  }
+}
+```
+
+---
+
+## Agent Properties
+
+### name
+
+Agent identifier (used in commands).
+
+### description
+
+Human-readable description shown in the TUI.
+
+### tools
+
+List of enabled tools:
+
+```json
+{
+  "tools": ["read", "edit", "grep", "bash"]
+}
+```
+
+### permissions
+
+Override default permissions:
+
+```json
+{
+  "permissions": {
+    "edit": "allow",
+    "bash": "ask"
+  }
+}
+```
+
+### model
+
+Use a specific model for this agent:
+
+```json
+{
+  "model": "gpt-4.1",
+  "provider": "openai"
+}
+```
+
+### system_prompt
+
+Custom system instructions:
+
+```json
+{
+  "system_prompt": "You are a Python expert. Always follow PEP 8."
+}
+```
+
+### rules
+
+Additional rules for the agent:
+
+```json
+{
+  "rules": [
+    "Focus on performance",
+    "Avoid breaking changes"
+  ]
+}
+```
+
+### max_steps
+
+Limit the number of tool calls:
+
+```json
+{
+  "max_steps": 50
+}
+```
+
+---
+
+## Sub-agents
+
+The `task` tool spawns sub-agents for parallel work:
+
+```txt frame="none"
+Implement the API endpoint and write tests in parallel
+```
+
+Configure sub-agent behavior:
+
+```json title="codesm.json"
+{
+  "subagent": {
+    "model": "claude-3-5-haiku-20241022",
+    "max_steps": 20,
+    "tools": ["read", "edit", "grep"]
+  }
+}
+```
+
+---
+
+## Agent Selection
+
+codesm can automatically select agents based on the task:
+
+```json title="codesm.json"
+{
+  "agent_routing": {
+    "enabled": true,
+    "rules": [
+      { "pattern": "review", "agent": "reviewer" },
+      { "pattern": "document|docs", "agent": "docs" }
+    ]
+  }
+}
+```

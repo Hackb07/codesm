@@ -1,0 +1,183 @@
+---
+title: Models
+description: Configure and switch between AI models.
+---
+
+codesm supports multiple AI models from various providers.
+
+---
+
+## Listing Models
+
+View available models:
+
+```bash frame="none"
+/models
+```
+
+This shows models from all configured providers.
+
+---
+
+## Switching Models
+
+### In TUI
+
+Use the models command:
+
+```bash frame="none"
+/models
+```
+
+Select from the list.
+
+### Command Line
+
+```bash
+codesm --model claude-sonnet-4-20250514 --provider anthropic
+```
+
+### In Config
+
+```json title="codesm.json"
+{
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-20250514"
+}
+```
+
+---
+
+## Recommended Models
+
+### For Coding Tasks
+
+| Model | Provider | Notes |
+|-------|----------|-------|
+| `claude-sonnet-4-20250514` | Anthropic | Best for complex coding |
+| `claude-3-5-sonnet-20241022` | Anthropic | Great balance |
+| `gpt-4.1` | OpenAI | Strong reasoning |
+| `codestral` | Ollama | Free, local |
+
+### For Quick Tasks
+
+| Model | Provider | Notes |
+|-------|----------|-------|
+| `claude-3-5-haiku-20241022` | Anthropic | Fast, cheap |
+| `gpt-4o-mini` | OpenAI | Fast, cheap |
+| `llama3.1:8b` | Ollama | Free, local |
+
+---
+
+## Model Configuration
+
+### Per-Project Models
+
+```json title="codesm.json"
+{
+  "model": "claude-sonnet-4-20250514",
+  "provider": "anthropic"
+}
+```
+
+### Per-Agent Models
+
+```json title="codesm.json"
+{
+  "agents": {
+    "build": {
+      "model": "claude-sonnet-4-20250514"
+    },
+    "plan": {
+      "model": "claude-3-5-haiku-20241022"
+    }
+  }
+}
+```
+
+### Sub-agent Models
+
+Use cheaper models for sub-agents:
+
+```json title="codesm.json"
+{
+  "subagent": {
+    "model": "claude-3-5-haiku-20241022",
+    "provider": "anthropic"
+  }
+}
+```
+
+---
+
+## Custom Model Endpoints
+
+### OpenAI-Compatible APIs
+
+```json title="codesm.json"
+{
+  "providers": {
+    "custom": {
+      "type": "openai",
+      "base_url": "https://api.example.com/v1",
+      "api_key_env": "CUSTOM_API_KEY",
+      "models": [
+        { "id": "custom-model", "name": "Custom Model" }
+      ]
+    }
+  }
+}
+```
+
+### Azure OpenAI
+
+```json title="codesm.json"
+{
+  "providers": {
+    "azure": {
+      "type": "azure",
+      "endpoint": "https://your-resource.openai.azure.com",
+      "api_key_env": "AZURE_OPENAI_KEY",
+      "deployment": "gpt-4"
+    }
+  }
+}
+```
+
+---
+
+## Cost Tracking
+
+Monitor costs per model:
+
+```json title="codesm.json"
+{
+  "limits": {
+    "session_max_cost": 5.00,
+    "warn_at_cost": 2.00
+  }
+}
+```
+
+View current usage in the TUI status bar:
+
+```txt frame="none"
+39,413 tokens (~$0.29)
+```
+
+---
+
+## Model Routing
+
+Automatically select models based on task:
+
+```json title="codesm.json"
+{
+  "model_routing": {
+    "enabled": true,
+    "default": "claude-sonnet-4-20250514",
+    "quick_tasks": "claude-3-5-haiku-20241022",
+    "complex_tasks": "claude-sonnet-4-20250514"
+  }
+}
+```

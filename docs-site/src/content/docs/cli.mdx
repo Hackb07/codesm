@@ -1,0 +1,167 @@
+---
+title: CLI
+description: Using codesm from the command line.
+---
+
+codesm can be used directly from the command line for quick tasks.
+
+---
+
+## Basic Usage
+
+### Start the TUI
+
+```bash
+codesm
+```
+
+### One-shot Prompt
+
+Run a single prompt and exit:
+
+```bash
+codesm -p "Explain the main function in src/main.py"
+```
+
+### Pipe Input
+
+Pipe content to codesm:
+
+```bash
+cat error.log | codesm -p "What's causing this error?"
+```
+
+---
+
+## Options
+
+```bash
+codesm [OPTIONS] [DIRECTORY]
+```
+
+| Option | Description |
+|--------|-------------|
+| `-p, --prompt TEXT` | Run a single prompt |
+| `-m, --model TEXT` | Override model |
+| `--provider TEXT` | Override provider |
+| `-c, --continue` | Continue last session |
+| `--session ID` | Resume specific session |
+| `--no-tui` | Run without TUI |
+| `-v, --verbose` | Enable verbose logging |
+| `--version` | Show version |
+| `--help` | Show help |
+
+---
+
+## Examples
+
+### Quick Question
+
+```bash
+codesm -p "What does the User class do?" --no-tui
+```
+
+### Use Different Model
+
+```bash
+codesm --model gpt-4.1 --provider openai
+```
+
+### Continue Session
+
+```bash
+codesm --continue
+```
+
+### Work on Specific Project
+
+```bash
+codesm /path/to/project
+```
+
+---
+
+## Output Formats
+
+### Plain Text (Default)
+
+```bash
+codesm -p "List all TODO comments" --no-tui
+```
+
+### JSON Output
+
+```bash
+codesm -p "List all functions" --output json
+```
+
+### Markdown Output
+
+```bash
+codesm -p "Document this code" --output markdown > docs.md
+```
+
+---
+
+## Scripting
+
+Use codesm in scripts:
+
+```bash
+#!/bin/bash
+
+# Generate documentation for all Python files
+for file in src/*.py; do
+  codesm -p "Generate docstrings for $file" --no-tui
+done
+```
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success |
+| `1` | General error |
+| `2` | Invalid arguments |
+| `3` | API error |
+| `4` | Permission denied |
+
+---
+
+## Environment Variables
+
+Override settings via environment:
+
+```bash
+# Provider configuration
+export CODESM_PROVIDER="anthropic"
+export CODESM_MODEL="claude-sonnet-4-20250514"
+
+# Behavior
+export CODESM_AUTO_APPROVE="true"
+export CODESM_LOG_LEVEL="DEBUG"
+```
+
+---
+
+## Completions
+
+### Bash
+
+```bash
+eval "$(codesm --completion bash)"
+```
+
+### Zsh
+
+```bash
+eval "$(codesm --completion zsh)"
+```
+
+### Fish
+
+```bash
+codesm --completion fish | source
+```
+
+Add to your shell config file to persist.

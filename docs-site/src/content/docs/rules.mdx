@@ -1,0 +1,139 @@
+---
+title: Rules
+description: Define custom rules and guidelines for the agent.
+---
+
+Rules help guide the agent's behavior for your project. They're defined in `AGENTS.md` files.
+
+---
+
+## AGENTS.md
+
+Create an `AGENTS.md` file in your project root:
+
+```markdown title="AGENTS.md"
+# Project Guidelines
+
+## Code Style
+
+- Use TypeScript strict mode
+- Prefer functional components in React
+- Always add JSDoc comments to public functions
+
+## Testing
+
+- Run tests with `pnpm test`
+- Maintain >80% coverage
+- Use vitest for unit tests
+
+## Architecture
+
+- Keep components under 200 lines
+- Use the repository pattern for data access
+- Avoid circular imports
+```
+
+---
+
+## Automatic Generation
+
+Generate `AGENTS.md` automatically:
+
+```bash frame="none"
+/init
+```
+
+codesm analyzes your project and creates guidelines based on:
+- Detected frameworks and libraries
+- Existing code patterns
+- Configuration files (eslint, prettier, etc.)
+
+---
+
+## Directory Rules
+
+Place `AGENTS.md` files in subdirectories for scoped rules:
+
+```
+project/
+├── AGENTS.md           # Project-wide rules
+├── src/
+│   ├── AGENTS.md       # Source code rules
+│   └── components/
+│       └── AGENTS.md   # Component-specific rules
+└── tests/
+    └── AGENTS.md       # Testing rules
+```
+
+Rules are inherited and more specific rules take precedence.
+
+---
+
+## Rule Types
+
+### Code Style Rules
+
+```markdown
+## Code Style
+
+- Use 2-space indentation
+- Max line length: 100 characters
+- Prefer `const` over `let`
+```
+
+### Command Rules
+
+```markdown
+## Commands
+
+- Build: `pnpm build`
+- Test: `pnpm test`
+- Lint: `pnpm lint`
+```
+
+### Architecture Rules
+
+```markdown
+## Architecture
+
+- All API routes go in `src/api/`
+- Shared utilities in `src/utils/`
+- Types in `src/types/`
+```
+
+### Forbidden Patterns
+
+```markdown
+## Don't
+
+- Never use `any` type in TypeScript
+- Don't commit directly to main
+- Avoid console.log in production code
+```
+
+---
+
+## Config-Based Rules
+
+Define rules in `codesm.json`:
+
+```json title="codesm.json"
+{
+  "rules": [
+    "Always use TypeScript",
+    "Run tests before committing",
+    "Follow the existing code style"
+  ]
+}
+```
+
+These are combined with `AGENTS.md` rules.
+
+---
+
+## Best Practices
+
+1. **Be specific**: "Use React Query for data fetching" > "Use a data library"
+2. **Explain why**: Include rationale for important rules
+3. **Keep updated**: Review rules as the project evolves
+4. **Commit to Git**: Share rules with your team

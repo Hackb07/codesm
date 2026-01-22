@@ -1,0 +1,151 @@
+---
+title: Keybinds
+description: Customize keyboard shortcuts.
+---
+
+codesm uses `ctrl+x` as the leader key for most commands.
+
+---
+
+## Default Keybinds
+
+### Navigation
+
+| Key | Action |
+|-----|--------|
+| `Tab` | Switch mode (Build/Plan) |
+| `ctrl+x l` | List sessions |
+| `ctrl+x h` | Show help |
+| `↑` / `↓` | Navigate history |
+| `ctrl+l` | Clear screen |
+
+### Session
+
+| Key | Action |
+|-----|--------|
+| `ctrl+x n` | New session |
+| `ctrl+x c` | Compact context |
+| `ctrl+x u` | Undo |
+| `ctrl+x r` | Redo |
+
+### Editing
+
+| Key | Action |
+|-----|--------|
+| `Enter` | Send message |
+| `Shift+Enter` | New line |
+| `ctrl+x e` | External editor |
+| `ctrl+x x` | Export to Markdown |
+
+### Tools
+
+| Key | Action |
+|-----|--------|
+| `ctrl+x m` | Models |
+| `ctrl+x t` | Themes |
+| `ctrl+x i` | Initialize project |
+| `ctrl+x d` | Toggle details |
+
+### Control
+
+| Key | Action |
+|-----|--------|
+| `ctrl+c` | Cancel operation |
+| `ctrl+x q` | Quit |
+| `Esc` | Close modal |
+
+---
+
+## Custom Keybinds
+
+Override keybinds in `codesm.json`:
+
+```json title="codesm.json"
+{
+  "keybinds": {
+    "new_session": "ctrl+n",
+    "undo": "ctrl+z",
+    "redo": "ctrl+shift+z",
+    "quit": "ctrl+q",
+    "help": "f1"
+  }
+}
+```
+
+---
+
+## Leader Key
+
+Change the leader key:
+
+```json title="codesm.json"
+{
+  "keybinds": {
+    "leader": "ctrl+a"
+  }
+}
+```
+
+Then use `ctrl+a n` for new session, etc.
+
+---
+
+## Available Commands
+
+All bindable commands:
+
+| Command | Default | Description |
+|---------|---------|-------------|
+| `new_session` | `ctrl+x n` | Start new session |
+| `sessions` | `ctrl+x l` | List sessions |
+| `compact` | `ctrl+x c` | Compact context |
+| `undo` | `ctrl+x u` | Undo last message |
+| `redo` | `ctrl+x r` | Redo message |
+| `help` | `ctrl+x h` | Show help |
+| `models` | `ctrl+x m` | Model selector |
+| `themes` | `ctrl+x t` | Theme selector |
+| `editor` | `ctrl+x e` | External editor |
+| `export` | `ctrl+x x` | Export session |
+| `init` | `ctrl+x i` | Initialize project |
+| `details` | `ctrl+x d` | Toggle details |
+| `quit` | `ctrl+x q` | Exit |
+| `cancel` | `ctrl+c` | Cancel operation |
+| `switch_mode` | `Tab` | Toggle Build/Plan |
+
+---
+
+## Vim-style Bindings
+
+For Vim users:
+
+```json title="codesm.json"
+{
+  "keybinds": {
+    "leader": "space",
+    "mode": "vim",
+    "mappings": {
+      "normal": {
+        "j": "scroll_down",
+        "k": "scroll_up",
+        "gg": "scroll_top",
+        "G": "scroll_bottom",
+        "/": "search"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Disabling Keybinds
+
+Disable specific keybinds:
+
+```json title="codesm.json"
+{
+  "keybinds": {
+    "disabled": ["ctrl+x d", "ctrl+x x"]
+  }
+}
+```
