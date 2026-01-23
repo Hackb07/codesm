@@ -91,12 +91,6 @@ Examples:
                     "default": False,
                 },
             },
-            "oneOf": [
-                {"required": ["path"]},
-                {"required": ["paths"]},
-                {"required": ["directory"]},
-                {"required": ["code"]},
-            ],
         }
     
     async def execute(self, args: dict, context: dict) -> str:
