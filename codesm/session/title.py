@@ -117,7 +117,7 @@ async def generate_title_with_openrouter(message: str, api_key: str) -> str:
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
-                    "HTTP-Referer": "https://github.com/codesm",
+                    "HTTP-Referer": "https://github.com/Aditya-PS-05",
                     "X-Title": "codesm",
                 },
                 json={

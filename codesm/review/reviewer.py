@@ -119,7 +119,7 @@ class CodeReviewer:
                 headers={
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json",
-                    "HTTP-Referer": "https://github.com/codesm",
+                    "HTTP-Referer": "https://github.com/Aditya-PS-05",
                     "X-Title": "codesm",
                 },
             )

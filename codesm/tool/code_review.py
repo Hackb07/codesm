@@ -81,7 +81,7 @@ class CodeReviewTool(Tool):
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
-                    "HTTP-Referer": "https://github.com/codesm",
+                    "HTTP-Referer": "https://github.com/Aditya-PS-05",
                     "X-Title": "codesm-code-review",
                 },
             )

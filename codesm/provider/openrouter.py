@@ -113,7 +113,7 @@ class OpenRouterProvider(Provider):
             "messages": full_messages,
             "stream": True,
             "extra_headers": {
-                "HTTP-Referer": "https://github.com/codesm",
+                "HTTP-Referer": "https://github.com/Aditya-PS-05",
                 "X-Title": "codesm",
             },
         }

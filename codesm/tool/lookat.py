@@ -107,7 +107,7 @@ class LookAtTool(Tool):
                     headers={
                         "Authorization": f"Bearer {api_key}",
                         "Content-Type": "application/json",
-                        "HTTP-Referer": "https://github.com/codesm",
+                        "HTTP-Referer": "https://github.com/Aditya-PS-05",
                         "X-Title": "codesm",
                     },
                     json={
@@ -252,7 +252,7 @@ Provide a focused analysis based on the objective. Be concise and actionable."""
                     headers={
                         "Authorization": f"Bearer {api_key}",
                         "Content-Type": "application/json",
-                        "HTTP-Referer": "https://github.com/codesm",
+                        "HTTP-Referer": "https://github.com/Aditya-PS-05",
                         "X-Title": "codesm",
                     },
                     json={
