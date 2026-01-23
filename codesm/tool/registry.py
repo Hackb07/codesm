@@ -36,7 +36,7 @@ class ToolRegistry:
         from .ls import ListTool
         from .batch import BatchTool
         from .patch import PatchTool
-        from .task import TaskTool
+        from .task import TaskTool, ParallelTaskTool
         from .skill import SkillTool
         from .undo import UndoTool
         from .redo import RedoTool
@@ -60,6 +60,10 @@ class ToolRegistry:
         # Task tool needs special initialization (needs reference to registry)
         task_tool = TaskTool(parent_tools=self)
         self._tools[task_tool.name] = task_tool
+        
+        # Parallel task tool for concurrent subagent execution
+        parallel_task_tool = ParallelTaskTool(parent_tools=self)
+        self._tools[parallel_task_tool.name] = parallel_task_tool
         
         # Oracle tool also needs reference to registry
         oracle_tool = OracleTool(parent_tools=self)

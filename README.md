@@ -21,6 +21,7 @@ flowchart TD
     G --> H{Tool Type?}
     H -->|MCP Tool| I[MCP Execute Tool]
     H -->|Built-in Tool| J[Direct Tool Execution]
+    H -->|Parallel Tasks| PA[Parallel Subagent Spawning]
     
     I --> K[Generate Python Code]
     K --> L[Execute in Subprocess]
@@ -39,13 +40,33 @@ flowchart TD
     S --> W[File System Operations]
     T --> X[Search Operations]
     U --> Y[External Process/API]
-    V --> Z[Spawn New Agent]
+    V --> Z[Spawn Single Subagent]
     
     W --> P
     X --> P
     Y --> P
-    Z --> AA[Subagent Results]
+    Z --> AA[Subagent Result]
     AA --> P
+    
+    PA --> PB{Orchestration Type?}
+    PB -->|parallel_tasks| PC[Concurrent Execution]
+    PB -->|orchestrate| PD[Staged Execution]
+    PB -->|pipeline| PE[Sequential Chain]
+    
+    PC --> PF[asyncio.gather]
+    PD --> PG[Stage 1 Parallel] --> PH[Stage 2 Parallel] --> PI[Stage N Parallel]
+    PE --> PJ[Step 1] --> PK[Pass Result] --> PL[Step 2]
+    
+    PF --> PM[Subagent 1]
+    PF --> PN[Subagent 2]
+    PF --> PO[Subagent N]
+    
+    PM --> PQ[Aggregate Results]
+    PN --> PQ
+    PO --> PQ
+    PI --> PQ
+    PL --> PQ
+    PQ --> P
     
     P --> BB[Add Tool Result Message]
     BB --> CC[Update Session State]
@@ -74,6 +95,128 @@ codesm
 # Or with uv directly
 uv run codesm
 ```
+
+## Parallel Subagents
+
+codesm supports spawning multiple subagents in parallel for independent tasks. This is inspired by opencode's batch/task pattern and allows faster execution of parallelizable work.
+
+### Using `parallel_tasks` Tool
+
+The `parallel_tasks` tool allows you to run up to 10 subagent tasks concurrently:
+
+```python
+# Example: Run multiple research tasks in parallel
+{
+    "tasks": [
+        {
+            "subagent_type": "researcher",
+            "prompt": "Find all API endpoints in the codebase",
+            "description": "Find API endpoints"
+        },
+        {
+            "subagent_type": "researcher", 
+            "prompt": "Analyze the authentication flow",
+            "description": "Analyze auth flow"
+        },
+        {
+            "subagent_type": "finder",
+            "prompt": "Find all test files",
+            "description": "Find test files"
+        }
+    ],
+    "fail_fast": false
+}
+```
+
+### Features
+
+- **Up to 10 concurrent tasks** - Prevent resource exhaustion
+- **Auto-routing** - Use `subagent_type: "auto"` to let the router pick the best agent
+- **Fail-fast mode** - Cancel remaining tasks on first failure with `fail_fast: true`
+- **Progress tracking** - Per-task timing and success/failure indicators
+- **Result aggregation** - Combined output with truncation for long results
+
+### Subagent Types
+
+| Type | Best For | Model |
+|------|----------|-------|
+| `coder` | Multi-file edits, features | Claude Sonnet |
+| `researcher` | Code analysis (read-only) | Claude Sonnet |
+| `reviewer` | Bug detection, security | Claude Sonnet |
+| `planner` | Implementation plans | Claude Sonnet |
+| `finder` | Fast code search | Gemini Flash |
+| `oracle` | Deep reasoning | o1 |
+| `librarian` | Multi-repo research | Claude Sonnet |
+| `auto` | Router picks best | Varies |
+
+### Advanced Orchestration
+
+For complex multi-stage workflows, use the `orchestrate` tool with stages:
+
+```python
+# Example: Staged execution (stages run sequentially, tasks within stages run in parallel)
+{
+    "stages": [
+        [  # Stage 1: Research (parallel)
+            {"subagent_type": "researcher", "prompt": "Analyze current auth system", "description": "Research auth"},
+            {"subagent_type": "finder", "prompt": "Find all auth-related files", "description": "Find auth files"}
+        ],
+        [  # Stage 2: Planning (after research completes)
+            {"subagent_type": "planner", "prompt": "Plan auth improvements based on research", "description": "Plan improvements"}
+        ],
+        [  # Stage 3: Implementation (after planning)
+            {"subagent_type": "coder", "prompt": "Implement planned auth improvements", "description": "Implement changes"},
+            {"subagent_type": "coder", "prompt": "Add tests for new auth code", "description": "Add tests"}
+        ]
+    ],
+    "fail_fast": true
+}
+```
+
+### Pipeline Tool
+
+For sequential workflows where each step receives the previous step's output:
+
+```python
+{
+    "steps": [
+        {"subagent_type": "researcher", "prompt_template": "Find all TODO comments in the codebase", "description": "Find TODOs"},
+        {"subagent_type": "planner", "prompt_template": "Prioritize these TODOs: {previous_result}", "description": "Prioritize"},
+        {"subagent_type": "coder", "prompt_template": "Fix the top priority TODO: {previous_result}", "description": "Fix top TODO"}
+    ],
+    "initial_context": ""
+}
+```
+
+### Programmatic Usage
+
+```python
+from codesm.agent.orchestrator import spawn_parallel_subagents, SubAgentOrchestrator, OrchestrationPlan
+
+# Simple parallel execution
+results = await spawn_parallel_subagents(
+    tasks=[
+        ("researcher", "Find all database queries", "Find DB queries"),
+        ("coder", "Add input validation to user.py", "Add validation"),
+    ],
+    directory=Path("."),
+    parent_tools=tool_registry,
+    max_concurrent=5,
+)
+
+for task in results:
+    print(f"{task.description}: {task.status}")
+
+# Advanced: Staged orchestration
+orchestrator = SubAgentOrchestrator(directory=Path("."), parent_tools=registry)
+plan = OrchestrationPlan.staged([
+    [orchestrator.create_task("researcher", "Research phase 1", "Research")],
+    [orchestrator.create_task("coder", "Implement based on research", "Implement")],
+])
+await orchestrator.execute_plan(plan)
+```
+
+---
 
 ## Agent Modes
 
@@ -119,7 +262,7 @@ codesm supports two agent modes for different task types:
 - [x] Agent loop with tool execution
 - [x] Command palette (`Ctrl+P` or `/`)
 - [x] Sidebar with session list
-- [x] **Tools**: Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Diagnostics, CodeSearch, Todo, Ls, Batch
+- [x] **Tools**: Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Diagnostics, CodeSearch, Todo, Ls, Batch, ParallelTasks, Orchestrate, Pipeline
 
 ### To Be Implemented
 
@@ -261,10 +404,10 @@ The system uses task-specialized models across three tiers:
 ### Critical (To match Amp/Claude Code/OpenCode)
 
 #### Agent Architecture
-- [ ] **Parallel Subagent Spawning** - Run multiple subagents concurrently for independent tasks
+- [x] **Parallel Subagent Spawning** - Run multiple subagents concurrently for independent tasks
 - [ ] **Context Window Management** - Smart context compression, summarization, and handoff
 - [ ] **Automatic Thread Handoff** - When context gets long, seamlessly continue in new thread
-- [ ] **Task Decomposition Engine** - Break complex tasks into parallelizable subtasks
+- [x] **Task Decomposition Engine** - Break complex tasks into parallelizable subtasks (via orchestrate/pipeline tools)
 - [ ] **Agent Self-Correction** - Detect and retry failed tool calls with different approaches
 
 #### Tool System

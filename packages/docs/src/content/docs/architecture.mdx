@@ -22,6 +22,7 @@ flowchart TD
     G --> H{Tool Type?}
     H -->|MCP Tool| I[MCP Execute Tool]
     H -->|Built-in Tool| J[Direct Tool Execution]
+    H -->|Parallel Tasks| PA[Parallel Subagent Spawning]
     
     I --> K[Generate Python Code]
     K --> L[Execute in Subprocess]
@@ -40,13 +41,33 @@ flowchart TD
     S --> W[File System Operations]
     T --> X[Search Operations]
     U --> Y[External Process/API]
-    V --> Z[Spawn New Agent]
+    V --> Z[Spawn Single Subagent]
     
     W --> P
     X --> P
     Y --> P
-    Z --> AA[Subagent Results]
+    Z --> AA[Subagent Result]
     AA --> P
+    
+    PA --> PB{Orchestration Type?}
+    PB -->|parallel_tasks| PC[Concurrent Execution]
+    PB -->|orchestrate| PD[Staged Execution]
+    PB -->|pipeline| PE[Sequential Chain]
+    
+    PC --> PF[asyncio.gather]
+    PD --> PG[Stage 1 Parallel] --> PH[Stage 2 Parallel] --> PI[Stage N Parallel]
+    PE --> PJ[Step 1] --> PK[Pass Result] --> PL[Step 2]
+    
+    PF --> PM[Subagent 1]
+    PF --> PN[Subagent 2]
+    PF --> PO[Subagent N]
+    
+    PM --> PQ[Aggregate Results]
+    PN --> PQ
+    PO --> PQ
+    PI --> PQ
+    PL --> PQ
+    PQ --> P
     
     P --> BB[Add Tool Result Message]
     BB --> CC[Update Session State]
@@ -107,6 +128,62 @@ async def spawn_subagent(self, task: str):
         max_steps=20,
     )
     return await subagent.run(task)
+```
+
+### Parallel Subagent Orchestration
+
+codesm supports three orchestration patterns for running multiple subagents:
+
+#### parallel_tasks
+Run 2-10 independent tasks concurrently:
+
+```python
+from codesm.agent.orchestrator import spawn_parallel_subagents
+
+results = await spawn_parallel_subagents(
+    tasks=[
+        ("researcher", "Find all API endpoints", "Find APIs"),
+        ("researcher", "Analyze auth flow", "Analyze auth"),
+        ("finder", "Find test files", "Find tests"),
+    ],
+    directory=Path("."),
+    parent_tools=registry,
+    max_concurrent=5,
+)
+```
+
+#### orchestrate (Staged Execution)
+Stages run sequentially, tasks within stages run in parallel:
+
+```python
+from codesm.agent.orchestrator import SubAgentOrchestrator, OrchestrationPlan
+
+orchestrator = SubAgentOrchestrator(directory=Path("."), parent_tools=registry)
+plan = OrchestrationPlan.staged([
+    [  # Stage 1: Research (parallel)
+        orchestrator.create_task("researcher", "Analyze current system", "Research"),
+        orchestrator.create_task("finder", "Find related files", "Find files"),
+    ],
+    [  # Stage 2: Plan (after research)
+        orchestrator.create_task("planner", "Create implementation plan", "Plan"),
+    ],
+    [  # Stage 3: Implement (after planning)
+        orchestrator.create_task("coder", "Implement changes", "Implement"),
+    ],
+])
+await orchestrator.execute_plan(plan)
+```
+
+#### pipeline (Sequential Chain)
+Each step receives the previous step's output:
+
+```python
+# Uses {previous_result} template variable
+steps = [
+    {"subagent_type": "researcher", "prompt_template": "Find TODOs", "description": "Find"},
+    {"subagent_type": "planner", "prompt_template": "Prioritize: {previous_result}", "description": "Prioritize"},
+    {"subagent_type": "coder", "prompt_template": "Fix top TODO: {previous_result}", "description": "Fix"},
+]
 ```
 
 ---

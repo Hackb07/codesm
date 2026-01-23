@@ -1,0 +1,72 @@
+Launch multiple subagents to execute independent tasks concurrently.
+
+USING PARALLEL TASKS YIELDS 2-5x EFFICIENCY GAINS FOR INDEPENDENT WORK.
+
+## When to Use
+
+- Run 2-10 independent research/coding tasks at once
+- Explore multiple code areas simultaneously
+- Execute independent file operations in parallel
+- Launch multiple reviewers with different focus areas
+- Speed up multi-step workflows where steps are independent
+
+## When NOT to Use
+
+- Tasks that depend on each other's output
+- Sequential workflows where order matters
+- Single tasks (use `task` tool instead)
+- Tasks requiring back-and-forth with user
+
+## Subagent Types
+
+| Type | Best For | Model |
+|------|----------|-------|
+| `coder` | Multi-file edits, features | Claude Sonnet |
+| `researcher` | Code analysis (read-only) | Claude Sonnet |
+| `reviewer` | Bug detection, security | Claude Sonnet |
+| `planner` | Implementation plans | Claude Sonnet |
+| `finder` | Fast code search | Gemini Flash |
+| `oracle` | Deep reasoning | o1 |
+| `librarian` | Multi-repo research | Claude Sonnet |
+| `auto` | Router picks best | Varies |
+
+## Parameters
+
+- `tasks`: Array of 1-10 tasks, each with:
+  - `subagent_type`: Agent type or "auto" for routing
+  - `prompt`: Detailed task instructions
+  - `description`: Short 3-5 word summary
+- `fail_fast`: (optional) Cancel remaining if one fails
+
+## Example
+
+```json
+{
+  "tasks": [
+    {
+      "subagent_type": "researcher",
+      "prompt": "Find all API endpoints in src/api/ and document their parameters",
+      "description": "Find API endpoints"
+    },
+    {
+      "subagent_type": "researcher",
+      "prompt": "Analyze the authentication flow in src/auth/",
+      "description": "Analyze auth flow"
+    },
+    {
+      "subagent_type": "finder",
+      "prompt": "Find all test files and list their test functions",
+      "description": "Find test files"
+    }
+  ],
+  "fail_fast": false
+}
+```
+
+## Tips
+
+1. **Be specific** - Each subagent has no shared context
+2. **Include file hints** - Speed up search with path hints
+3. **Use appropriate types** - `finder` for speed, `oracle` for depth
+4. **Group related work** - Tasks with shared context run better together
+5. **10 task limit** - Additional tasks are ignored
