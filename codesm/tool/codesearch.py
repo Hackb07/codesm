@@ -9,8 +9,10 @@ from pathlib import Path
 from typing import Optional
 from .base import Tool
 from codesm.util.citations import file_link_with_path
+from codesm.index import ProjectIndexer
+from codesm.search.embeddings import get_embeddings
 
-# Cache directory for embeddings
+# Cache directory for embeddings (used for fallback with custom patterns)
 CACHE_DIR = Path.home() / ".cache" / "codesm" / "embeddings"
 
 
@@ -121,31 +123,8 @@ class CodeSearchTool(Tool):
     
     @classmethod
     async def _get_embeddings(cls, texts: list[str]) -> list[list[float]]:
-        """Get embeddings from OpenAI API"""
-        client = cls._get_client()
-        
-        # Batch texts (max 2048 per request)
-        all_embeddings = []
-        batch_size = 100
-        
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i:i + batch_size]
-            # Truncate long texts
-            batch = [t[:8000] for t in batch]
-            
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None,
-                lambda b=batch: client.embeddings.create(
-                    model="text-embedding-3-small",
-                    input=b
-                )
-            )
-            
-            for item in response.data:
-                all_embeddings.append(item.embedding)
-        
-        return all_embeddings
+        """Get embeddings from OpenAI API - delegates to shared embeddings module"""
+        return await get_embeddings(texts)
     
     def _get_code_files(self, root: Path, pattern: Optional[str] = None) -> list[Path]:
         """Get all code files in directory"""
@@ -312,8 +291,6 @@ class CodeSearchTool(Tool):
         return all_chunks
     
     async def execute(self, args: dict, context: dict) -> str:
-        import numpy as np
-        
         query = args["query"]
         path = args.get("path") or context.get("cwd", ".")
         pattern = args.get("file_pattern")
@@ -324,57 +301,34 @@ class CodeSearchTool(Tool):
             return f"Error: Path '{path}' does not exist"
         
         try:
-            # Build/load index
-            index = await self._build_index(root, pattern)
-            if not index:
-                return "No code files found to search"
+            # Use pre-built index for standard searches, fallback for custom patterns
+            if pattern:
+                # Custom pattern - use legacy on-demand indexing
+                search_results = await self._search_with_pattern(root, pattern, query, top_k)
+            else:
+                # Use ProjectIndexer for standard searches
+                indexer = ProjectIndexer(root)
+                await indexer.ensure_index()
+                search_results = await indexer.search(query, top_k)
             
-            # Embed query
-            query_embeddings = await self._get_embeddings([query])
-            query_embedding = np.array(query_embeddings[0])
-            
-            # Normalize query
-            query_embedding = query_embedding / np.linalg.norm(query_embedding)
-            
-            # Calculate similarities (dot product = cosine similarity for normalized vectors)
-            similarities = []
-            for chunk in index:
-                sim = float(np.dot(query_embedding, chunk["embedding"]))
-                similarities.append((sim, chunk))
-            
-            # Sort by similarity
-            similarities.sort(key=lambda x: x[0], reverse=True)
+            if not search_results:
+                return "No relevant code found for the query"
             
             # Format results
             results = []
-            seen_files = set()
-            
-            for sim, chunk in similarities[:top_k * 2]:  # Get extra to dedupe
-                if len(results) >= top_k:
-                    break
+            for item in search_results:
+                file_path = Path(item["file"])
+                link = file_link_with_path(file_path, item['start_line'], item['end_line'])
                 
-                # Dedupe by file+line range
-                key = f"{chunk['file']}:{chunk['start_line']}"
-                if key in seen_files:
-                    continue
-                seen_files.add(key)
-                
-                # Format result with clickable link
-                file_path = Path(chunk["file"])
-                link = file_link_with_path(file_path, chunk['start_line'], chunk['end_line'])
-                
-                # Truncate content for display
-                preview = chunk["content"][:500]
-                if len(chunk["content"]) > 500:
+                preview = item["content"][:500]
+                if len(item["content"]) > 500:
                     preview += "\n..."
                 
+                score = item.get("score", 0)
                 results.append(
-                    f"### {link} (score: {sim:.3f})\n"
+                    f"### {link} (score: {score:.3f})\n"
                     f"```\n{preview}\n```"
                 )
-            
-            if not results:
-                return "No relevant code found for the query"
             
             return f"Found {len(results)} relevant code sections:\n\n" + "\n\n".join(results)
             
@@ -382,3 +336,44 @@ class CodeSearchTool(Tool):
             return str(e)
         except Exception as e:
             return f"Error during search: {e}"
+    
+    async def _search_with_pattern(self, root: Path, pattern: str, query: str, top_k: int) -> list[dict]:
+        """Fallback search with custom file pattern - uses legacy on-demand indexing"""
+        import numpy as np
+        
+        index = await self._build_index(root, pattern)
+        if not index:
+            return []
+        
+        query_embeddings = await self._get_embeddings([query])
+        query_embedding = np.array(query_embeddings[0])
+        query_embedding = query_embedding / np.linalg.norm(query_embedding)
+        
+        similarities = []
+        for chunk in index:
+            sim = float(np.dot(query_embedding, chunk["embedding"]))
+            similarities.append((sim, chunk))
+        
+        similarities.sort(key=lambda x: x[0], reverse=True)
+        
+        results = []
+        seen_files = set()
+        
+        for sim, chunk in similarities[:top_k * 2]:
+            if len(results) >= top_k:
+                break
+            
+            key = f"{chunk['file']}:{chunk['start_line']}"
+            if key in seen_files:
+                continue
+            seen_files.add(key)
+            
+            results.append({
+                "file": chunk["file"],
+                "start_line": chunk["start_line"],
+                "end_line": chunk["end_line"],
+                "content": chunk["content"],
+                "score": sim,
+            })
+        
+        return results

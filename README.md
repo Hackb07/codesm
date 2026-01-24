@@ -419,8 +419,8 @@ The system uses task-specialized models across three tiers:
 
 #### Context & Memory
 - [x] **AGENTS.md Support** - Read project-specific instructions automatically
-- [ ] **Cross-Session Memory** - Remember user preferences and past solutions
-- [ ] **Codebase Indexing** - Pre-index repos for instant semantic search
+- [x] **Cross-Session Memory** - Remember user preferences and past solutions
+- [x] **Codebase Indexing** - Pre-index repos for instant semantic search
 - [ ] **Git Integration** - Auto-commit, branch management, PR creation
 - [ ] **Conversation Branching** - Fork conversations to explore alternatives
 

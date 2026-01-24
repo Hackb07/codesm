@@ -112,6 +112,20 @@ AGENTS.md:
     - .github/copilot-instructions.md
 
   Run 'codesm init' to generate an AGENTS.md for your project.
+
+Memory commands:
+
+  codesm memory list       List stored memories
+  codesm memory add        Add a memory manually  
+  codesm memory forget     Delete a specific memory
+  codesm memory clear      Clear stored memories
+
+Index commands:
+
+  codesm index build       Build codebase index for fast semantic search
+  codesm index status      Show index status
+  codesm index search      Search the indexed codebase
+  codesm index clear       Clear the index
 """
 
 
@@ -133,6 +147,12 @@ app = typer.Typer(
     add_completion=False,
     invoke_without_command=True,
 )
+
+# Add memory and index subcommands
+from codesm.memory.cli import memory_app
+from codesm.index.cli import index_app
+app.add_typer(memory_app, name="memory")
+app.add_typer(index_app, name="index")
 
 
 @app.callback()

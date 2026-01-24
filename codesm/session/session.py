@@ -1,5 +1,6 @@
 """Session management - tracks conversation state"""
 
+import asyncio
 import json
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -9,6 +10,7 @@ from typing import Any, Optional, TYPE_CHECKING
 from codesm.storage.storage import Storage
 from codesm.session.title import create_default_title, is_default_title, generate_title_sync, generate_title_async
 from codesm.undo_history import UndoHistory
+from codesm.index import ProjectIndexer
 
 if TYPE_CHECKING:
     from codesm.snapshot import Snapshot
@@ -34,12 +36,17 @@ class Session:
     def create(cls, directory: Path, is_child: bool = False) -> "Session":
         """Create a new session"""
         session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
+        resolved_dir = Path(directory).resolve()
         session = cls(
             id=session_id,
-            directory=Path(directory).resolve(),
+            directory=resolved_dir,
             title=create_default_title(is_child),
         )
         session.save()
+        
+        # Trigger background indexing for new sessions
+        asyncio.create_task(ProjectIndexer(resolved_dir).ensure_index())
+        
         return session
     
     @classmethod
@@ -260,3 +267,9 @@ class Session:
         if self._undo_history is None:
             self._undo_history = UndoHistory()
         return self._undo_history
+    
+    async def extract_memories(self):
+        """Extract and save memories from this session"""
+        from codesm.memory import MemoryExtractor
+        extractor = MemoryExtractor()
+        return await extractor.extract_from_session(self.id)
