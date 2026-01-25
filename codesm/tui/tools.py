@@ -677,7 +677,8 @@ class ToolTreeWidget(Static, can_focus=True):
         super().__init__(**kwargs)
         self.category = category
         self._collapsed = collapsed
-        self._tools: list[tuple[str, dict, bool, str]] = []  # (name, args, pending, summary)
+        # (name, args, pending, summary, streaming_text, diff_preview)
+        self._tools: list[tuple[str, dict, bool, str, str, str]] = []
         self._pending = True
     
     def render(self) -> Text:
@@ -708,9 +709,10 @@ class ToolTreeWidget(Static, can_focus=True):
         text.append("\n│", style=DIM)
         
         # Render each tool
-        for i, (name, args, pending, summary) in enumerate(self._tools):
+        for i, (name, args, pending, summary, streaming_text, diff_preview) in enumerate(self._tools):
             is_last = (i == len(self._tools) - 1)
-            connector = "\n└── " if is_last else "\n├── "
+            has_sublines = bool(streaming_text or diff_preview)
+            connector = "\n└── " if is_last and not has_sublines else "\n├── "
             text.append(connector, style=DIM)
             
             if pending:
@@ -722,6 +724,64 @@ class ToolTreeWidget(Static, can_focus=True):
             
             if summary and not pending:
                 text.append(f" {summary}", style="dim")
+            
+            # Show streaming text inline (for bash output, etc.)
+            if streaming_text and not self._collapsed:
+                lines = streaming_text.strip().split("\n")[:3]  # Max 3 lines preview
+                for j, line in enumerate(lines):
+                    is_last_line = (j == len(lines) - 1) and is_last and not diff_preview
+                    line_connector = "\n│   └── " if is_last_line else "\n│   ├── "
+                    text.append(line_connector, style=DIM)
+                    # Truncate long lines
+                    display_line = line[:60] + "..." if len(line) > 60 else line
+                    text.append(display_line, style="dim")
+                if len(streaming_text.strip().split("\n")) > 3:
+                    text.append("\n│   └── ", style=DIM)
+                    text.append(f"... ({len(streaming_text.strip().split(chr(10))) - 3} more lines)", style="dim italic")
+            
+            # Show diff preview for edit/write operations
+            if diff_preview and not self._collapsed:
+                text.append_text(self._render_diff_preview(diff_preview, is_last))
+        
+        return text
+    
+    def _render_diff_preview(self, diff: str, is_last: bool) -> Text:
+        """Render a compact diff preview with colors."""
+        text = Text()
+        lines = diff.strip().split("\n")
+        
+        # Count additions/deletions
+        additions = sum(1 for l in lines if l.startswith('+') and not l.startswith('+++'))
+        deletions = sum(1 for l in lines if l.startswith('-') and not l.startswith('---'))
+        
+        # Show summary line
+        prefix = "\n│   └── " if is_last else "\n│   ├── "
+        text.append(prefix, style=DIM)
+        text.append(f"+{additions}", style=f"bold {GREEN}")
+        text.append(" / ", style="dim")
+        text.append(f"-{deletions}", style="bold red")
+        
+        # Show first few diff lines (max 4)
+        shown_lines = 0
+        for line in lines:
+            if shown_lines >= 4:
+                break
+            if line.startswith('@@'):
+                continue
+            if line.startswith('+++') or line.startswith('---'):
+                continue
+            
+            line_prefix = "\n│       "
+            text.append(line_prefix, style=DIM)
+            
+            display_line = line[:50] + "..." if len(line) > 50 else line
+            if line.startswith('+'):
+                text.append(display_line, style=f"{GREEN}")
+            elif line.startswith('-'):
+                text.append(display_line, style="red")
+            else:
+                text.append(display_line, style="dim")
+            shown_lines += 1
         
         return text
     
@@ -787,18 +847,32 @@ class ToolTreeWidget(Static, can_focus=True):
     
     def add_tool(self, name: str, args: dict, pending: bool = True) -> int:
         """Add a tool to the group. Returns the index."""
-        self._tools.append((name, args, pending, ""))
+        self._tools.append((name, args, pending, "", "", ""))
         self.refresh()
         return len(self._tools) - 1
     
-    def mark_tool_complete(self, index: int, summary: str = ""):
-        """Mark a tool as complete."""
+    def mark_tool_complete(self, index: int, summary: str = "", streaming_text: str = "", diff_preview: str = ""):
+        """Mark a tool as complete with optional inline content."""
         if 0 <= index < len(self._tools):
-            name, args, _, _ = self._tools[index]
-            self._tools[index] = (name, args, False, summary)
+            name, args, _, _, _, _ = self._tools[index]
+            self._tools[index] = (name, args, False, summary, streaming_text, diff_preview)
             # Check if all tools are complete
             if not any(t[2] for t in self._tools):
                 self._pending = False
+            self.refresh()
+    
+    def update_streaming_text(self, index: int, text: str):
+        """Update streaming text for a tool (for live output)."""
+        if 0 <= index < len(self._tools):
+            name, args, pending, summary, _, diff = self._tools[index]
+            self._tools[index] = (name, args, pending, summary, text, diff)
+            self.refresh()
+    
+    def set_diff_preview(self, index: int, diff: str):
+        """Set diff preview for an edit/write tool."""
+        if 0 <= index < len(self._tools):
+            name, args, pending, summary, streaming, _ = self._tools[index]
+            self._tools[index] = (name, args, pending, summary, streaming, diff)
             self.refresh()
     
     def toggle_collapse(self):
@@ -1324,6 +1398,146 @@ class SubAgentTreeWidget(Static, can_focus=True):
         if self._complete:
             event.stop()
             self.toggle_collapse()
+
+
+class ContextBreadcrumbs(Static):
+    """Shows which files are currently in context - Amp style.
+    
+    Renders as a horizontal bar at the top:
+        Context: auth.py, utils.py, config.json (+3 more)
+    
+    Clickable to copy file paths.
+    """
+    
+    DEFAULT_CSS = """
+    ContextBreadcrumbs {
+        height: 1;
+        width: 100%;
+        padding: 0 2;
+        background: $surface;
+        border-bottom: solid $primary;
+    }
+    
+    ContextBreadcrumbs:hover {
+        background: $panel;
+    }
+    """
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._files: list[str] = []
+        self._max_display = 5
+    
+    def render(self) -> Text:
+        text = Text()
+        
+        if not self._files:
+            text.append("Context: ", style="dim")
+            text.append("No files", style="dim italic")
+            return text
+        
+        text.append("Context: ", style="dim")
+        
+        display_files = self._files[:self._max_display]
+        for i, path in enumerate(display_files):
+            if i > 0:
+                text.append(", ", style="dim")
+            
+            # Show just filename
+            filename = path.split("/")[-1]
+            # Make it a clickable link
+            file_url = f"file://{path}"
+            text.append(filename, style=f"{CYAN} link {file_url}")
+        
+        # Show overflow count
+        if len(self._files) > self._max_display:
+            remaining = len(self._files) - self._max_display
+            text.append(f" (+{remaining} more)", style="dim")
+        
+        return text
+    
+    def add_file(self, path: str):
+        """Add a file to context (avoids duplicates)."""
+        if path not in self._files:
+            self._files.append(path)
+            self.refresh()
+    
+    def remove_file(self, path: str):
+        """Remove a file from context."""
+        if path in self._files:
+            self._files.remove(path)
+            self.refresh()
+    
+    def set_files(self, files: list[str]):
+        """Set the full file list."""
+        self._files = list(files)
+        self.refresh()
+    
+    def clear(self):
+        """Clear all files."""
+        self._files.clear()
+        self.refresh()
+    
+    def get_files(self) -> list[str]:
+        """Get current file list."""
+        return list(self._files)
+
+
+class ClickablePath(Static, can_focus=True):
+    """A clickable file path that copies to clipboard on click.
+    
+    Renders as a styled path that highlights on hover.
+    """
+    
+    DEFAULT_CSS = """
+    ClickablePath {
+        height: auto;
+        width: auto;
+    }
+    
+    ClickablePath:hover {
+        background: $surface;
+        text-style: underline;
+    }
+    
+    ClickablePath:focus {
+        background: $surface;
+    }
+    """
+    
+    class PathCopied(Message):
+        """Posted when path is copied to clipboard."""
+        def __init__(self, path: str) -> None:
+            super().__init__()
+            self.path = path
+    
+    def __init__(self, path: str, **kwargs):
+        super().__init__(**kwargs)
+        self._path = path
+    
+    def render(self) -> Text:
+        text = Text()
+        # Shorten path for display
+        parts = self._path.split("/")
+        if len(parts) > 3:
+            display = f".../{'/'.join(parts[-2:])}"
+        else:
+            display = self._path
+        
+        file_url = f"file://{self._path}"
+        text.append(display, style=f"{CYAN} link {file_url}")
+        return text
+    
+    def on_click(self, event):
+        """Copy path to clipboard on click."""
+        event.stop()
+        self.post_message(self.PathCopied(self._path))
+        # Try to copy to clipboard
+        try:
+            import pyperclip
+            pyperclip.copy(self._path)
+        except ImportError:
+            pass  # pyperclip not available
 
 
 class TodoItemWidget(Static):

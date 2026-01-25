@@ -21,7 +21,7 @@ from .tools import (
     ToolCallWidget, ToolResultWidget, ThinkingWidget, TodoListWidget,
     ActionHeaderWidget, TreeConnectorWidget, StreamingTextWidget, CodeReviewWidget,
     ToolTreeWidget, ThinkingTreeWidget, CollapsibleTreeGroup,
-    OracleTreeWidget, SubAgentTreeWidget,
+    OracleTreeWidget, SubAgentTreeWidget, ContextBreadcrumbs, ClickablePath,
     TOOL_CATEGORIES
 )
 from .autocomplete import AutocompletePopup
@@ -301,6 +301,9 @@ class CodesmApp(App):
         Binding("ctrl+p", "show_command_palette", "Commands", show=True),
         Binding("ctrl+b", "toggle_sidebar", "Sidebar", show=False),
         Binding("tab", "toggle_mode", "Mode", show=True),
+        # Tree collapse/expand shortcuts
+        Binding("c", "collapse_all", "Collapse All", show=False),
+        Binding("e", "expand_all", "Expand All", show=False),
     ]
 
     def __init__(self, directory: Path, model: str, session_id: str | None = None):
@@ -356,6 +359,9 @@ class CodesmApp(App):
                     )
 
                 with Container(id="chat-view", classes="hidden"):
+                    # Context breadcrumbs at top of chat
+                    yield ContextBreadcrumbs(id="context-breadcrumbs")
+                    
                     with VerticalScroll(id="chat-container"):
                         yield Vertical(id="messages")
                     
@@ -876,6 +882,10 @@ class CodesmApp(App):
         else:
             self._get_active_input().focus()
 
+    def on_clickable_path_path_copied(self, event: ClickablePath.PathCopied):
+        """Handle path copied from ClickablePath widget."""
+        self.notify(f"Copied: {event.path}")
+    
     async def on_input_submitted(self, event: Input.Submitted):
         """Handle message submission"""
         message = event.value.strip()
@@ -1052,16 +1062,41 @@ class CodesmApp(App):
                         # Generate result summary for inline display
                         result_summary = self._get_result_summary(chunk.name, chunk.content)
                         
+                        # Track files in context for breadcrumbs
+                        if chunk.name == "read":
+                            # Extract file path from args if available
+                            if chunk.id in tool_index_map:
+                                tree_widget, tool_idx = tool_index_map[chunk.id]
+                                if tool_idx < len(tree_widget._tools):
+                                    _, args, _, _, _, _ = tree_widget._tools[tool_idx]
+                                    path = args.get("path", args.get("file_path", ""))
+                                    if path:
+                                        self._update_context_breadcrumbs(path)
+                        
+                        # Extract diff preview for edit/write operations
+                        diff_preview = ""
+                        streaming_text = ""
+                        if chunk.name in ["edit", "write"]:
+                            diff_preview = self._extract_diff(chunk.content)
+                        elif chunk.name == "bash":
+                            # Show bash output inline (first 200 chars)
+                            streaming_text = chunk.content[:200] if chunk.content else ""
+                        
                         # Update tree widget if using grouped display
                         if chunk.id in tool_index_map:
                             tree_widget, tool_idx = tool_index_map[chunk.id]
-                            tree_widget.mark_tool_complete(tool_idx, result_summary)
+                            tree_widget.mark_tool_complete(
+                                tool_idx, 
+                                result_summary,
+                                streaming_text=streaming_text,
+                                diff_preview=diff_preview
+                            )
                         elif chunk.id in tool_widgets:
                             # Fallback for legacy individual widgets
                             tool_widgets[chunk.id].mark_completed(result_summary=result_summary)
 
-                        # Only show full result for edit/write/bash/mermaid (not glob/grep)
-                        if chunk.name in ["edit", "write", "bash", "mcp_execute", "mermaid", "diagram"]:
+                        # Only show full result for mermaid/diagram (edit/write/bash now inline in tree)
+                        if chunk.name in ["mcp_execute", "mermaid", "diagram"]:
                             from .chat import styled_markdown
                             result_msg = Static(styled_markdown(chunk.content))
                             result_msg.styles.padding = (0, 2, 1, 4)
@@ -1481,6 +1516,52 @@ class CodesmApp(App):
             return "Tasks"
         else:
             return "Action"
+    
+    def _update_context_breadcrumbs(self, path: str):
+        """Add a file to the context breadcrumbs display."""
+        try:
+            breadcrumbs = self.query_one("#context-breadcrumbs", ContextBreadcrumbs)
+            breadcrumbs.add_file(path)
+        except Exception:
+            pass
+    
+    def _extract_diff(self, content: str) -> str:
+        """Extract diff content from edit/write tool result."""
+        if not content:
+            return ""
+        
+        # Look for diff markers
+        lines = content.split("\n")
+        diff_lines = []
+        in_diff = False
+        
+        for line in lines:
+            # Start of diff
+            if line.startswith("```diff") or line.startswith("---") or line.startswith("@@"):
+                in_diff = True
+            
+            # Capture diff lines
+            if in_diff:
+                if line.startswith("```") and not line.startswith("```diff"):
+                    in_diff = False
+                    continue
+                if line.startswith("+") or line.startswith("-") or line.startswith("@@"):
+                    diff_lines.append(line)
+                elif line.startswith(" "):  # Context line
+                    diff_lines.append(line)
+        
+        # If we found diff lines, return them
+        if diff_lines:
+            return "\n".join(diff_lines[:20])  # Limit to 20 lines
+        
+        # Fallback: look for +/- lines anywhere
+        for line in lines:
+            if line.startswith("+") and not line.startswith("+++"):
+                diff_lines.append(line)
+            elif line.startswith("-") and not line.startswith("---"):
+                diff_lines.append(line)
+        
+        return "\n".join(diff_lines[:20]) if diff_lines else ""
 
     def _get_result_summary(self, tool_name: str, content: str) -> str:
         """Generate a compact summary for tool results."""
@@ -1585,6 +1666,80 @@ class CodesmApp(App):
                 sidebar.remove_class("hidden")
             else:
                 sidebar.add_class("hidden")
+        except Exception:
+            pass
+
+    def action_collapse_all(self):
+        """Collapse all tree widgets in the chat"""
+        collapsed_count = 0
+        try:
+            # Collapse all ToolTreeWidgets
+            for widget in self.query(ToolTreeWidget):
+                if not widget._collapsed:
+                    widget._collapsed = True
+                    widget.refresh()
+                    collapsed_count += 1
+            
+            # Collapse all ThinkingTreeWidgets
+            for widget in self.query(ThinkingTreeWidget):
+                if widget._complete and not widget._collapsed:
+                    widget._collapsed = True
+                    widget.refresh()
+                    collapsed_count += 1
+            
+            # Collapse all OracleTreeWidgets
+            for widget in self.query(OracleTreeWidget):
+                if widget._complete and not widget._collapsed:
+                    widget._collapsed = True
+                    widget.refresh()
+                    collapsed_count += 1
+            
+            # Collapse all SubAgentTreeWidgets
+            for widget in self.query(SubAgentTreeWidget):
+                if widget._complete and not widget._collapsed:
+                    widget._collapsed = True
+                    widget.refresh()
+                    collapsed_count += 1
+            
+            if collapsed_count:
+                self.notify(f"Collapsed {collapsed_count} sections")
+        except Exception:
+            pass
+
+    def action_expand_all(self):
+        """Expand all tree widgets in the chat"""
+        expanded_count = 0
+        try:
+            # Expand all ToolTreeWidgets
+            for widget in self.query(ToolTreeWidget):
+                if widget._collapsed:
+                    widget._collapsed = False
+                    widget.refresh()
+                    expanded_count += 1
+            
+            # Expand all ThinkingTreeWidgets
+            for widget in self.query(ThinkingTreeWidget):
+                if widget._collapsed:
+                    widget._collapsed = False
+                    widget.refresh()
+                    expanded_count += 1
+            
+            # Expand all OracleTreeWidgets
+            for widget in self.query(OracleTreeWidget):
+                if widget._collapsed:
+                    widget._collapsed = False
+                    widget.refresh()
+                    expanded_count += 1
+            
+            # Expand all SubAgentTreeWidgets
+            for widget in self.query(SubAgentTreeWidget):
+                if widget._collapsed:
+                    widget._collapsed = False
+                    widget.refresh()
+                    expanded_count += 1
+            
+            if expanded_count:
+                self.notify(f"Expanded {expanded_count} sections")
         except Exception:
             pass
 
