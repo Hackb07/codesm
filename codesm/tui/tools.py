@@ -481,7 +481,7 @@ class TreeNode(Static):
         self.refresh()
 
 
-class CollapsibleTreeGroup(Static):
+class CollapsibleTreeGroup(Static, can_focus=True):
     """A collapsible group of tree nodes - Amp style.
     
     Renders as:
@@ -493,6 +493,8 @@ class CollapsibleTreeGroup(Static):
     
     When collapsed:
         ▸ Group Title (3 items)
+    
+    Click or press Enter to toggle expand/collapse.
     """
     
     DEFAULT_CSS = """
@@ -502,10 +504,23 @@ class CollapsibleTreeGroup(Static):
         margin: 0 0 1 0;
     }
     
+    CollapsibleTreeGroup:hover {
+        background: $surface;
+    }
+    
+    CollapsibleTreeGroup:focus {
+        background: $surface;
+    }
+    
     CollapsibleTreeGroup.collapsed .tree-children {
         display: none;
     }
     """
+    
+    BINDINGS = [
+        ("enter", "toggle", "Toggle"),
+        ("space", "toggle", "Toggle"),
+    ]
     
     class Toggled(Message):
         """Posted when the group is toggled."""
@@ -609,12 +624,17 @@ class CollapsibleTreeGroup(Static):
         self.post_message(self.Toggled(self, self.expanded))
         self.refresh()
     
-    def on_click(self):
+    def action_toggle(self):
+        """Action handler for key bindings."""
+        self.toggle()
+    
+    def on_click(self, event):
         """Handle click to toggle."""
+        event.stop()
         self.toggle()
 
 
-class ToolTreeWidget(Static):
+class ToolTreeWidget(Static, can_focus=True):
     """Amp-style tool call display with tree hierarchy.
     
     Groups related tool calls and shows them in a collapsible tree:
@@ -632,7 +652,20 @@ class ToolTreeWidget(Static):
         padding: 0 2;
         margin: 0;
     }
+    
+    ToolTreeWidget:hover {
+        background: $surface;
+    }
+    
+    ToolTreeWidget:focus {
+        background: $surface;
+    }
     """
+    
+    BINDINGS = [
+        ("enter", "toggle_collapse", "Toggle"),
+        ("space", "toggle_collapse", "Toggle"),
+    ]
     
     def __init__(
         self,
@@ -773,12 +806,17 @@ class ToolTreeWidget(Static):
         self._collapsed = not self._collapsed
         self.refresh()
     
-    def on_click(self):
+    def action_toggle_collapse(self):
+        """Action handler for key bindings."""
+        self.toggle_collapse()
+    
+    def on_click(self, event):
         """Handle click to toggle collapse."""
+        event.stop()
         self.toggle_collapse()
 
 
-class ThinkingTreeWidget(Static):
+class ThinkingTreeWidget(Static, can_focus=True):
     """Amp-style thinking indicator with collapsible content.
     
     Renders as:
@@ -796,7 +834,20 @@ class ThinkingTreeWidget(Static):
         padding: 0 2;
         margin: 0 0 1 0;
     }
+    
+    ThinkingTreeWidget:hover {
+        background: $surface;
+    }
+    
+    ThinkingTreeWidget:focus {
+        background: $surface;
+    }
     """
+    
+    BINDINGS = [
+        ("enter", "toggle", "Toggle"),
+        ("space", "toggle", "Toggle"),
+    ]
     
     SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
     
@@ -877,14 +928,402 @@ class ThinkingTreeWidget(Static):
         self._collapsed = not self._collapsed
         self.refresh()
     
-    def on_click(self):
+    def action_toggle(self):
+        """Action handler for key bindings."""
+        if self._complete:
+            self.toggle_collapse()
+    
+    def on_click(self, event):
         """Handle click to toggle collapse."""
         if self._complete:
+            event.stop()
             self.toggle_collapse()
 
 
 # Additional color constant for headers
 LIGHT_BLUE = "#8aadf4"
+PURPLE = "#c6a0f6"
+
+
+class OracleTreeWidget(Static, can_focus=True):
+    """Amp-style Oracle/subagent display with collapsible results.
+    
+    Renders as:
+        ▾ ✓ Oracle
+        │
+        ├── Thinking...
+        │
+        └── TL;DR: Summary of analysis
+            │
+            ├── 1. First recommendation
+            ├── 2. Second recommendation
+            └── 3. Third recommendation
+    
+    When collapsed:
+        ▸ ✓ Oracle — Summary preview...
+    """
+    
+    DEFAULT_CSS = """
+    OracleTreeWidget {
+        height: auto;
+        padding: 0 2;
+        margin: 0 0 1 0;
+    }
+    
+    OracleTreeWidget:hover {
+        background: $surface;
+    }
+    
+    OracleTreeWidget:focus {
+        background: $surface;
+    }
+    """
+    
+    BINDINGS = [
+        ("enter", "toggle", "Toggle"),
+        ("space", "toggle", "Toggle"),
+    ]
+    
+    SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    
+    def __init__(
+        self,
+        title: str = "Oracle",
+        *,
+        subagent_type: str = "oracle",
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self._title = title
+        self._subagent_type = subagent_type
+        self._frame = 0
+        self._complete = False
+        self._collapsed = False
+        self._thinking_message = "Analyzing..."
+        self._summary: str | None = None
+        self._recommendations: list[str] = []
+        self._files_read: list[str] = []
+        self._result_content: str = ""
+    
+    def render(self) -> Text:
+        text = Text()
+        
+        # Collapsed state
+        if self._collapsed and self._complete:
+            text.append("▸ ", style="dim")
+            text.append("✓ ", style=f"bold {GREEN}")
+            text.append(self._title, style=f"bold {PURPLE}")
+            if self._summary:
+                summary_preview = self._summary[:60] + "..." if len(self._summary) > 60 else self._summary
+                text.append(f" — {summary_preview}", style="dim")
+            return text
+        
+        # Expanded state - header
+        if self._complete or self._summary or self._recommendations:
+            text.append("▾ ", style="dim")
+        
+        if self._complete:
+            text.append("✓ ", style=f"bold {GREEN}")
+        else:
+            spinner = self.SPINNER[self._frame % len(self.SPINNER)]
+            text.append(f"{spinner} ", style=f"bold {PURPLE}")
+        
+        text.append(self._title, style=f"bold {PURPLE}")
+        
+        # Show subagent type if not oracle
+        if self._subagent_type and self._subagent_type != "oracle":
+            text.append(f" ({self._subagent_type})", style="dim")
+        
+        # Thinking state
+        if not self._complete:
+            text.append("\n│", style=DIM)
+            text.append("\n└── ", style=DIM)
+            spinner = self.SPINNER[self._frame % len(self.SPINNER)]
+            text.append(f"{spinner} ", style=f"bold {CYAN}")
+            text.append(self._thinking_message, style="dim")
+            return text
+        
+        # Completed state with content
+        if self._summary or self._recommendations or self._files_read:
+            text.append("\n│", style=DIM)
+        
+        # Show files read
+        if self._files_read:
+            for i, path in enumerate(self._files_read):
+                is_last = (i == len(self._files_read) - 1) and not self._summary and not self._recommendations
+                connector = "\n└── " if is_last else "\n├── "
+                text.append(connector, style=DIM)
+                text.append("Read ", style="dim")
+                # Shorten path
+                parts = path.split("/")
+                short_path = f".../{'/'.join(parts[-2:])}" if len(parts) > 3 else path
+                text.append(short_path, style=f"{CYAN}")
+        
+        # Show TL;DR summary
+        if self._summary:
+            has_more = bool(self._recommendations)
+            connector = "\n├── " if has_more else "\n└── "
+            text.append(connector, style=DIM)
+            text.append("TL;DR: ", style=f"bold {LIGHT_BLUE}")
+            text.append(self._summary, style="")
+        
+        # Show recommendations
+        for i, rec in enumerate(self._recommendations):
+            is_last = (i == len(self._recommendations) - 1)
+            connector = "\n└── " if is_last else "\n├── "
+            text.append(connector, style=DIM)
+            text.append(f"{i + 1}) ", style=f"bold {YELLOW}")
+            # Truncate long recommendations
+            rec_display = rec[:80] + "..." if len(rec) > 80 else rec
+            text.append(rec_display, style="")
+        
+        return text
+    
+    def next_frame(self):
+        """Advance spinner animation."""
+        if not self._complete:
+            self._frame += 1
+            self.refresh()
+    
+    def set_thinking(self, message: str):
+        """Update the thinking message."""
+        self._thinking_message = message
+        self.refresh()
+    
+    def add_file_read(self, path: str):
+        """Add a file that was read during analysis."""
+        if path not in self._files_read:
+            self._files_read.append(path)
+            self.refresh()
+    
+    def complete(
+        self,
+        summary: str | None = None,
+        recommendations: list[str] | None = None,
+        content: str = ""
+    ):
+        """Mark oracle as complete with results."""
+        self._complete = True
+        self._summary = summary
+        self._recommendations = recommendations or []
+        self._result_content = content
+        self.refresh()
+    
+    def parse_and_complete(self, content: str):
+        """Parse oracle response content and extract summary/recommendations."""
+        self._result_content = content
+        self._complete = True
+        
+        # Try to extract TL;DR summary
+        lines = content.strip().split("\n")
+        summary_lines = []
+        recommendations = []
+        in_summary = False
+        
+        for line in lines:
+            line_lower = line.lower().strip()
+            
+            # Detect TL;DR or summary section
+            if "tl;dr" in line_lower or "summary" in line_lower:
+                in_summary = True
+                continue
+            
+            # Detect numbered recommendations
+            if line.strip() and line.strip()[0].isdigit() and ("." in line[:4] or ")" in line[:4]):
+                # Extract the recommendation text
+                rec_text = line.strip()
+                for sep in [".", ")", ":"]:
+                    if sep in rec_text[:4]:
+                        rec_text = rec_text.split(sep, 1)[1].strip()
+                        break
+                if rec_text:
+                    recommendations.append(rec_text)
+                in_summary = False
+                continue
+            
+            if in_summary and line.strip():
+                summary_lines.append(line.strip())
+        
+        if summary_lines:
+            self._summary = " ".join(summary_lines[:2])  # First 2 lines as summary
+        elif lines:
+            # Use first non-empty line as summary
+            for line in lines:
+                if line.strip():
+                    self._summary = line.strip()[:100]
+                    break
+        
+        self._recommendations = recommendations[:5]  # Max 5 recommendations
+        self.refresh()
+    
+    def toggle_collapse(self):
+        """Toggle collapsed state."""
+        self._collapsed = not self._collapsed
+        self.refresh()
+    
+    def action_toggle(self):
+        """Action handler for key bindings."""
+        if self._complete:
+            self.toggle_collapse()
+    
+    def on_click(self, event):
+        """Handle click to toggle collapse."""
+        if self._complete:
+            event.stop()
+            self.toggle_collapse()
+
+
+class SubAgentTreeWidget(Static, can_focus=True):
+    """Amp-style subagent task display with collapsible results.
+    
+    Renders as:
+        ▾ ✓ Task: Implement authentication
+        │
+        ├── Using coder subagent
+        ├── ✓ Read auth.py
+        ├── ✓ Edit auth.py
+        └── Result: Added JWT validation
+    """
+    
+    DEFAULT_CSS = """
+    SubAgentTreeWidget {
+        height: auto;
+        padding: 0 2;
+        margin: 0 0 1 0;
+    }
+    
+    SubAgentTreeWidget:hover {
+        background: $surface;
+    }
+    
+    SubAgentTreeWidget:focus {
+        background: $surface;
+    }
+    """
+    
+    BINDINGS = [
+        ("enter", "toggle", "Toggle"),
+        ("space", "toggle", "Toggle"),
+    ]
+    
+    SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    
+    def __init__(
+        self,
+        description: str,
+        *,
+        subagent_type: str = "coder",
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self._description = description
+        self._subagent_type = subagent_type
+        self._frame = 0
+        self._complete = False
+        self._collapsed = False
+        self._actions: list[tuple[str, str, bool]] = []  # (action, detail, complete)
+        self._result_summary: str = ""
+    
+    def render(self) -> Text:
+        text = Text()
+        
+        # Collapsed state
+        if self._collapsed and self._complete:
+            text.append("▸ ", style="dim")
+            text.append("✓ ", style=f"bold {GREEN}")
+            text.append("Task: ", style="dim")
+            desc_preview = self._description[:50] + "..." if len(self._description) > 50 else self._description
+            text.append(desc_preview, style="bold white")
+            if self._result_summary:
+                text.append(f" — {self._result_summary[:30]}...", style="dim")
+            return text
+        
+        # Expanded header
+        if self._complete or self._actions:
+            text.append("▾ ", style="dim")
+        
+        if self._complete:
+            text.append("✓ ", style=f"bold {GREEN}")
+        else:
+            spinner = self.SPINNER[self._frame % len(self.SPINNER)]
+            text.append(f"{spinner} ", style=f"bold {CYAN}")
+        
+        text.append("Task: ", style="dim")
+        desc_display = self._description[:60] + "..." if len(self._description) > 60 else self._description
+        text.append(desc_display, style="bold white")
+        
+        # Show content
+        if self._actions or self._subagent_type:
+            text.append("\n│", style=DIM)
+        
+        # Subagent type
+        text.append("\n├── ", style=DIM)
+        text.append(f"Using {self._subagent_type} subagent", style="dim")
+        
+        # Actions
+        for i, (action, detail, complete) in enumerate(self._actions):
+            is_last = (i == len(self._actions) - 1) and not self._result_summary
+            connector = "\n└── " if is_last else "\n├── "
+            text.append(connector, style=DIM)
+            
+            if complete:
+                text.append("✓ ", style=f"bold {GREEN}")
+            else:
+                text.append("~ ", style="dim")
+            
+            text.append(action, style="")
+            if detail:
+                text.append(f" {detail}", style=f"{CYAN}")
+        
+        # Result summary
+        if self._result_summary and self._complete:
+            text.append("\n└── ", style=DIM)
+            text.append("Result: ", style=f"bold {LIGHT_BLUE}")
+            text.append(self._result_summary, style="")
+        
+        return text
+    
+    def next_frame(self):
+        """Advance spinner animation."""
+        if not self._complete:
+            self._frame += 1
+            self.refresh()
+    
+    def add_action(self, action: str, detail: str = "", complete: bool = False):
+        """Add an action the subagent performed."""
+        self._actions.append((action, detail, complete))
+        self.refresh()
+    
+    def mark_action_complete(self, index: int):
+        """Mark a specific action as complete."""
+        if 0 <= index < len(self._actions):
+            action, detail, _ = self._actions[index]
+            self._actions[index] = (action, detail, True)
+            self.refresh()
+    
+    def complete(self, result_summary: str = ""):
+        """Mark the subagent task as complete."""
+        self._complete = True
+        self._result_summary = result_summary
+        # Mark all actions complete
+        self._actions = [(a, d, True) for a, d, _ in self._actions]
+        self.refresh()
+    
+    def toggle_collapse(self):
+        """Toggle collapsed state."""
+        self._collapsed = not self._collapsed
+        self.refresh()
+    
+    def action_toggle(self):
+        """Action handler for key bindings."""
+        if self._complete:
+            self.toggle_collapse()
+    
+    def on_click(self, event):
+        """Handle click to toggle collapse."""
+        if self._complete:
+            event.stop()
+            self.toggle_collapse()
 
 
 class TodoItemWidget(Static):

@@ -21,6 +21,7 @@ from .tools import (
     ToolCallWidget, ToolResultWidget, ThinkingWidget, TodoListWidget,
     ActionHeaderWidget, TreeConnectorWidget, StreamingTextWidget, CodeReviewWidget,
     ToolTreeWidget, ThinkingTreeWidget, CollapsibleTreeGroup,
+    OracleTreeWidget, SubAgentTreeWidget,
     TOOL_CATEGORIES
 )
 from .autocomplete import AutocompletePopup
@@ -944,6 +945,12 @@ class CodesmApp(App):
             current_tree_widget: ToolTreeWidget | None = None
             tool_index_map: dict[str, tuple[ToolTreeWidget, int]] = {}  # tool_id -> (tree_widget, index)
             
+            # Track thinking and subagent widgets
+            thinking_tree_widget: ThinkingTreeWidget | None = None
+            thinking_timer = None
+            oracle_widgets: dict[str, OracleTreeWidget] = {}  # subagent_id -> widget
+            subagent_widgets: dict[str, SubAgentTreeWidget] = {}  # subagent_id -> widget
+            
             # Streaming text widget for live response display
             streaming_widget: StreamingTextWidget | None = None
             cursor_timer = None
@@ -1072,10 +1079,76 @@ class CodesmApp(App):
                         # Handle handoff to new session
                         logger.info(f"Handoff triggered to session: {chunk.new_session_id}")
                         self._pending_handoff_session = chunk.new_session_id
+                    
+                    elif chunk.type == "thinking":
+                        # Start or update thinking display
+                        if thinking_tree_widget is None:
+                            thinking_tree_widget = ThinkingTreeWidget(chunk.content or "Thinking")
+                            await messages_container.mount(thinking_tree_widget)
+                            # Start spinner animation
+                            thinking_timer = self.set_interval(0.1, lambda: thinking_tree_widget.next_frame() if thinking_tree_widget else None)
+                        else:
+                            thinking_tree_widget.set_message(chunk.content or "Thinking")
+                        chat_container.scroll_end(animate=False)
+                    
+                    elif chunk.type == "thinking_done":
+                        # Complete thinking with summary
+                        if thinking_tree_widget:
+                            thinking_tree_widget.complete(chunk.thinking_summary)
+                            if thinking_timer:
+                                thinking_timer.stop()
+                                thinking_timer = None
+                        chat_container.scroll_end(animate=False)
+                    
+                    elif chunk.type == "subagent_start":
+                        # Start subagent display
+                        subagent_id = chunk.subagent_id or f"subagent-{uuid.uuid4().hex[:8]}"
+                        subagent_type = chunk.subagent_type or "coder"
+                        
+                        if subagent_type == "oracle":
+                            # Use special Oracle widget
+                            oracle_widget = OracleTreeWidget(
+                                title="Oracle",
+                                subagent_type=subagent_type
+                            )
+                            oracle_widgets[subagent_id] = oracle_widget
+                            await messages_container.mount(oracle_widget)
+                            # Start spinner animation
+                            self.set_interval(0.1, lambda w=oracle_widget: w.next_frame() if not w._complete else None)
+                        else:
+                            # Use general subagent widget
+                            subagent_widget = SubAgentTreeWidget(
+                                description=chunk.content or "Processing task",
+                                subagent_type=subagent_type
+                            )
+                            subagent_widgets[subagent_id] = subagent_widget
+                            await messages_container.mount(subagent_widget)
+                            # Start spinner animation
+                            self.set_interval(0.1, lambda w=subagent_widget: w.next_frame() if not w._complete else None)
+                        
+                        chat_container.scroll_end(animate=False)
+                    
+                    elif chunk.type == "subagent_done":
+                        # Complete subagent display
+                        subagent_id = chunk.subagent_id or ""
+                        
+                        if subagent_id in oracle_widgets:
+                            oracle_widgets[subagent_id].parse_and_complete(chunk.content)
+                        elif subagent_id in subagent_widgets:
+                            # Extract a summary from the result
+                            summary = chunk.content[:100] + "..." if len(chunk.content) > 100 else chunk.content
+                            subagent_widgets[subagent_id].complete(summary)
+                        
+                        chat_container.scroll_end(animate=False)
+                    
                 else:
                     response_text += str(chunk)
 
             duration = time.time() - start_time
+            
+            # Stop thinking timer if still running
+            if thinking_timer:
+                thinking_timer.stop()
 
             # Stop cursor blink timer
             if cursor_timer:
