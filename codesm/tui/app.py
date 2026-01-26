@@ -963,9 +963,6 @@ class CodesmApp(App):
             # Streaming text widget for live response display
             streaming_widget: StreamingTextWidget | None = None
             cursor_timer = None
-            
-            # Generate unique ID for this response's streaming widget
-            streaming_widget_id = f"streaming-response-{uuid.uuid4().hex[:8]}"
 
             chunk_count = 0
             last_chunk_time = time.time()
@@ -985,22 +982,17 @@ class CodesmApp(App):
                         response_text += chunk.content
                         logger.info(f"[STREAM] chunk #{chunk_count} after {delta:.3f}s: {chunk.content[:30] if chunk.content else 'empty'}...")
                         
-                        # Create or re-mount streaming widget
+                        # Create new streaming widget or append to existing one
                         if streaming_widget is None and chunk.content:
+                            # Create new streaming widget (first text or after tool call)
                             streaming_widget = StreamingTextWidget()
-                            streaming_widget.id = streaming_widget_id
-                            # Initialize with first chunk's content before mounting
+                            streaming_widget.id = f"streaming-response-{uuid.uuid4().hex[:8]}"
                             streaming_widget.set_content(chunk.content)
                             await messages_container.mount(streaming_widget)
                             cursor_timer = self.set_interval(0.5, lambda: self._blink_cursor(streaming_widget))
                             chat_container.scroll_end(animate=False)
-                        elif streaming_widget is not None and streaming_widget.parent is None and chunk.content:
-                            # Re-mount the widget if it was removed for tool calls
-                            await messages_container.mount(streaming_widget)
-                            streaming_widget.append_text(chunk.content)
-                            chat_container.scroll_end(animate=False)
                         elif streaming_widget and chunk.content:
-                            # Append text to streaming widget
+                            # Append text to existing streaming widget
                             streaming_widget.append_text(chunk.content)
                             chat_container.scroll_end(animate=False)
                         
@@ -1009,10 +1001,10 @@ class CodesmApp(App):
                             self.refresh(layout=True)
                             await asyncio.sleep(0.01)  # Small delay to ensure TUI processes refresh
                     elif chunk.type == "tool_call":
-                        # If streaming widget is mounted, remove it so tool calls appear in order
-                        # It will be re-mounted when more text arrives
+                        # Finalize current streaming widget so tool call appears after it
                         if streaming_widget is not None and streaming_widget.parent is not None:
-                            await streaming_widget.remove()
+                            streaming_widget.mark_complete()
+                            streaming_widget = None  # Create new one for text after tool call
                         
                         logger.debug(f"Tool call: {chunk.name} with args {chunk.args}")
                         
@@ -1189,11 +1181,10 @@ class CodesmApp(App):
                 cursor_timer.stop()
             
             # Finalize streaming widget
-            if streaming_widget and response_text:
-                # Re-mount if it was removed during tool calls
-                if streaming_widget.parent is None:
-                    await messages_container.mount(streaming_widget)
+            if streaming_widget and streaming_widget.parent is not None:
                 streaming_widget.mark_complete()
+            
+            if response_text:
                 logger.info(f"Got response, length: {len(response_text)}")
                 
                 # Update sidebar with token/cost estimates and session title
