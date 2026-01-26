@@ -150,8 +150,8 @@ class CodesmApp(App):
         width: 100%;
         height: 100%;
         layout: grid;
-        grid-size: 1 2;
-        grid-rows: 1fr auto;
+        grid-size: 1 3;
+        grid-rows: auto 1fr auto;
     }
 
     .hidden {
@@ -163,13 +163,13 @@ class CodesmApp(App):
         height: 100%;
         background: $background;
         border: none;
-        row-span: 1;
+        align: left top;
     }
 
     #messages {
         width: 100%;
         height: auto;
-        padding: 1 2;
+        padding: 0 2;
         background: $background;
     }
 
@@ -177,7 +177,7 @@ class CodesmApp(App):
     ChatMessage.user {
         border-left: heavy $secondary;
         padding: 1 2;
-        margin: 1 0 0 0;
+        margin: 0;
         background: $surface;
     }
 
@@ -187,7 +187,7 @@ class CodesmApp(App):
 
     ChatMessage.assistant {
         padding: 1 2;
-        margin: 1 0 0 0;
+        margin: 0;
     }
 
     .message-separator {
@@ -202,7 +202,6 @@ class CodesmApp(App):
         width: 100%;
         background: $surface;
         padding: 1;
-        row-span: 1;
     }
 
     #chat-input-wrapper {
