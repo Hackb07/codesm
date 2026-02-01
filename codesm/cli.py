@@ -155,6 +155,52 @@ app.add_typer(memory_app, name="memory")
 app.add_typer(index_app, name="index")
 
 
+@app.command()
+def login(
+    provider: str = typer.Option("anthropic", "--provider", "-p", help="Provider (anthropic, openai)"),
+):
+    """Store API credentials"""
+    from codesm.auth.credentials import CredentialStore
+    from rich.prompt import Prompt
+    
+    store = CredentialStore()
+    
+    # Prompt for key if not provided
+    key = Prompt.ask(f"Enter API key for [green]{provider}[/green]", password=True)
+    
+    if key:
+        store.set(provider, {"api_key": key})
+        print(f"Credentials saved for {provider}")
+    else:
+        print("No key provided")
+
+
+@app.command()
+def logout(
+    provider: str = typer.Option("anthropic", "--provider", "-p", help="Provider to remove"),
+):
+    """Remove API credentials"""
+    from codesm.auth.credentials import CredentialStore
+    import typer
+    
+    store = CredentialStore()
+    
+    if not store.get(provider):
+        print(f"No credentials found for {provider}")
+        return
+        
+    if typer.confirm(f"Remove credentials for {provider}?"):
+        store.delete(provider)
+        print(f"Credentials removed for {provider}")
+
+
+# Import subcommands
+from codesm.cli_threads import app as threads_app
+from codesm.cli_tools import app as tools_app
+
+app.add_typer(threads_app, name="threads")
+app.add_typer(tools_app, name="tools")
+
 @app.callback()
 def main_callback(
     ctx: typer.Context,
@@ -165,6 +211,11 @@ def main_callback(
         is_eager=True,
         help="Print the version number and exit.",
     ),
+    execute: str = typer.Option(
+        None,
+        "--execute", "-x",
+        help="Execute a prompt non-interactively and exit.",
+    ),
     help_flag: bool = typer.Option(
         False,
         "--help",
@@ -174,6 +225,33 @@ def main_callback(
     ),
 ):
     """AI coding agent"""
+    if execute:
+        # Non-interactive execution mode
+        import asyncio
+        from codesm.agent.agent import Agent
+        from codesm.auth.credentials import CredentialStore
+        
+        async def run_execute():
+            store = CredentialStore()
+            model = store.get_preferred_model() or "anthropic/claude-sonnet-4-20250514"
+            
+            # Initialize agent
+            agent = Agent(directory=Path("."), model=model)
+            
+            # We want to capture the final answer, not the whole stream
+            full_response = ""
+            async for chunk in agent.chat(execute):
+                if chunk.type == "text":
+                    full_response += chunk.content
+            
+            # Print only the final result
+            print(full_response)
+            
+            await agent.cleanup()
+            
+        asyncio.run(run_execute())
+        raise typer.Exit()
+
     if ctx.invoked_subcommand is None:
         print(HELP_TEXT)
         raise typer.Exit()
@@ -227,13 +305,17 @@ def chat(
 
     async def run_chat():
         agent = Agent(directory=directory, model=model)
-        async for chunk in agent.chat(message):
-            # chunk is a StreamChunk object, extract the content
-            if hasattr(chunk, 'content'):
-                print(chunk.content, end="", flush=True)
-            else:
-                print(chunk, end="", flush=True)
-        print()
+        # Initialize MCP explicitly if needed, but agent.chat() does it
+        try:
+            async for chunk in agent.chat(message):
+                # chunk is a StreamChunk object, extract the content
+                if hasattr(chunk, 'content'):
+                    print(chunk.content, end="", flush=True)
+                else:
+                    print(chunk, end="", flush=True)
+            print()
+        finally:
+            await agent.cleanup()
 
     asyncio.run(run_chat())
 
@@ -246,6 +328,13 @@ def serve(
     """Start HTTP API server"""
     from codesm.server.server import start_server
     start_server(port=port, directory=directory)
+
+
+@app.command()
+def lsp():
+    """Start Language Server (stdio)"""
+    from codesm.lsp.server import start_lsp
+    start_lsp()
 
 
 @app.command()
