@@ -32,6 +32,7 @@ class ToolRegistry:
         from .webfetch import WebFetchTool
         from .websearch import WebSearchTool
         from .diagnostics import DiagnosticsTool
+        from .lsp import LSPTool
         from .codesearch import CodeSearchTool
         from .todo import TodoTool
         from .ls import ListTool
@@ -54,7 +55,7 @@ class ToolRegistry:
         from .bug_localize import BugLocalizeTool
         from .refactor import RefactorTool, RefactorApplyTool
 
-        for tool_class in [ReadTool, WriteTool, EditTool, MultiEditTool, MultiFileEditTool, BashTool, GitTool, GrepTool, GlobTool, WebFetchTool, WebSearchTool, DiagnosticsTool, CodeSearchTool, TodoTool, ListTool, BatchTool, PatchTool, SkillTool, UndoTool, RedoTool, LookAtTool]:
+        for tool_class in [ReadTool, WriteTool, EditTool, MultiEditTool, MultiFileEditTool, BashTool, GitTool, GrepTool, GlobTool, WebFetchTool, WebSearchTool, DiagnosticsTool, LSPTool, CodeSearchTool, TodoTool, ListTool, BatchTool, PatchTool, SkillTool, UndoTool, RedoTool, LookAtTool]:
             tool = tool_class()
             self._tools[tool.name] = tool
         

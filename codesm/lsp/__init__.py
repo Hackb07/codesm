@@ -2,11 +2,20 @@
 
 import asyncio
 import logging
+import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
-from .client import LSPClient, Diagnostic
-from .servers import SERVERS, ServerConfig, get_server_for_file
+from .client import (
+    LSPClient,
+    Diagnostic,
+    Range,
+    Location,
+    Symbol,
+    Hover,
+    CallHierarchyItem,
+)
+from .servers import SERVERS, ServerConfig, get_server_for_file, get_servers_for_file
 
 logger = logging.getLogger(__name__)
 
@@ -29,38 +38,70 @@ async def init(
     Returns:
         Dict mapping server name to success status
     """
-    import shutil
-    from pathlib import Path
-    
     global _clients, _root_path
     _root_path = root_path
     
-    # Detect which servers to start based on file types in workspace
     if servers is None:
         servers = []
         workspace = Path(root_path)
         
-        # Check for Python files
         if list(workspace.rglob("*.py"))[:1]:
             if shutil.which("pylsp"):
                 servers.append("python")
             elif shutil.which("pyright-langserver"):
                 servers.append("python-pyright")
         
-        # Check for TypeScript/JavaScript files
         if list(workspace.rglob("*.ts"))[:1] or list(workspace.rglob("*.js"))[:1]:
             if shutil.which("typescript-language-server"):
                 servers.append("typescript")
         
-        # Check for Rust files
         if list(workspace.rglob("*.rs"))[:1]:
             if shutil.which("rust-analyzer"):
                 servers.append("rust")
         
-        # Check for Go files
         if list(workspace.rglob("*.go"))[:1]:
             if shutil.which("gopls"):
                 servers.append("go")
+        
+        if list(workspace.rglob("*.vue"))[:1]:
+            if shutil.which("vue-language-server"):
+                servers.append("vue")
+        
+        if list(workspace.rglob("*.svelte"))[:1]:
+            if shutil.which("svelteserver"):
+                servers.append("svelte")
+        
+        if list(workspace.rglob("*.cpp"))[:1] or list(workspace.rglob("*.c"))[:1]:
+            if shutil.which("clangd"):
+                servers.append("clangd")
+        
+        if list(workspace.rglob("*.lua"))[:1]:
+            if shutil.which("lua-language-server"):
+                servers.append("lua")
+        
+        if list(workspace.rglob("*.zig"))[:1]:
+            if shutil.which("zls"):
+                servers.append("zig")
+        
+        if list(workspace.rglob("*.html"))[:1]:
+            if shutil.which("vscode-html-language-server"):
+                servers.append("html")
+        
+        if list(workspace.rglob("*.css"))[:1] or list(workspace.rglob("*.scss"))[:1]:
+            if shutil.which("vscode-css-language-server"):
+                servers.append("css")
+        
+        if list(workspace.rglob("*.json"))[:1]:
+            if shutil.which("vscode-json-language-server"):
+                servers.append("json")
+        
+        if list(workspace.rglob("*.yaml"))[:1] or list(workspace.rglob("*.yml"))[:1]:
+            if shutil.which("yaml-language-server"):
+                servers.append("yaml")
+        
+        if list(workspace.rglob("*.sh"))[:1]:
+            if shutil.which("bash-language-server"):
+                servers.append("bash")
     
     results = {}
     
@@ -71,6 +112,13 @@ async def init(
             continue
         
         config = SERVERS[key]
+        
+        executable = config.command[0]
+        if not shutil.which(executable):
+            logger.warning(f"LSP server executable not found: {executable}")
+            results[key] = False
+            continue
+        
         client = LSPClient(config=config, root_path=root_path)
         
         if await client.start():
@@ -86,6 +134,20 @@ async def init(
             results[key] = False
     
     return results
+
+
+def _get_clients_for_file(path: str) -> list[LSPClient]:
+    """Get all active clients that handle the given file."""
+    server_keys = get_servers_for_file(path)
+    return [_clients[key] for key in server_keys if key in _clients]
+
+
+def _resolve_path(path: str) -> str:
+    """Resolve a path to absolute."""
+    file_path = Path(path)
+    if not file_path.is_absolute() and _root_path:
+        file_path = Path(_root_path) / path
+    return str(file_path)
 
 
 def diagnostics(path: Optional[str] = None) -> list[Diagnostic]:
@@ -120,23 +182,176 @@ async def touch_file(
     Returns:
         List of diagnostics for the file
     """
-    file_path = Path(path)
-    if not file_path.is_absolute() and _root_path:
-        file_path = Path(_root_path) / path
+    abs_path = _resolve_path(path)
+    clients = _get_clients_for_file(abs_path)
     
-    abs_path = str(file_path)
-    server_key = get_server_for_file(abs_path)
+    if not clients:
+        return []
     
-    if server_key and server_key in _clients:
-        client = _clients[server_key]
+    for client in clients:
         await client.did_open(abs_path)
-        
-        if wait_for_diagnostics:
-            await asyncio.sleep(min(timeout, 2.0))
-        
-        return client.get_diagnostics(abs_path)
     
-    return []
+    if wait_for_diagnostics:
+        await asyncio.sleep(min(timeout, 2.0))
+    
+    all_diags = []
+    for client in clients:
+        all_diags.extend(client.get_diagnostics(abs_path))
+    return all_diags
+
+
+async def goto_definition(path: str, line: int, column: int) -> list[Location]:
+    """
+    Get definition locations for a symbol at the given position.
+    
+    Args:
+        path: File path
+        line: 1-based line number
+        column: 1-based column number
+    
+    Returns:
+        List of Location objects
+    """
+    abs_path = _resolve_path(path)
+    clients = _get_clients_for_file(abs_path)
+    
+    if not clients:
+        return []
+    
+    all_locations = []
+    for client in clients:
+        locations = await client.definition(abs_path, line, column)
+        all_locations.extend(locations)
+    
+    return all_locations
+
+
+async def find_references(
+    path: str, line: int, column: int, include_declaration: bool = True
+) -> list[Location]:
+    """
+    Find all references to a symbol at the given position.
+    
+    Args:
+        path: File path
+        line: 1-based line number
+        column: 1-based column number
+        include_declaration: Whether to include the declaration in results
+    
+    Returns:
+        List of Location objects
+    """
+    abs_path = _resolve_path(path)
+    clients = _get_clients_for_file(abs_path)
+    
+    if not clients:
+        return []
+    
+    all_locations = []
+    for client in clients:
+        locations = await client.references(abs_path, line, column, include_declaration)
+        all_locations.extend(locations)
+    
+    return all_locations
+
+
+async def hover(path: str, line: int, column: int) -> Optional[Hover]:
+    """
+    Get hover information for a symbol at the given position.
+    
+    Args:
+        path: File path
+        line: 1-based line number
+        column: 1-based column number
+    
+    Returns:
+        Hover object or None if no hover info available
+    """
+    abs_path = _resolve_path(path)
+    clients = _get_clients_for_file(abs_path)
+    
+    for client in clients:
+        result = await client.hover(abs_path, line, column)
+        if result:
+            return result
+    
+    return None
+
+
+async def document_symbols(path: str) -> list[Symbol]:
+    """
+    Get all symbols in a document.
+    
+    Args:
+        path: File path
+    
+    Returns:
+        List of Symbol objects
+    """
+    abs_path = _resolve_path(path)
+    clients = _get_clients_for_file(abs_path)
+    
+    if not clients:
+        return []
+    
+    all_symbols = []
+    for client in clients:
+        symbols = await client.document_symbols(abs_path)
+        all_symbols.extend(symbols)
+    
+    return all_symbols
+
+
+async def workspace_symbols(query: str) -> list[Symbol]:
+    """
+    Search for symbols across the workspace.
+    
+    Args:
+        query: Search query string
+    
+    Returns:
+        List of Symbol objects
+    """
+    all_symbols = []
+    for client in _clients.values():
+        symbols = await client.workspace_symbols(query)
+        all_symbols.extend(symbols)
+    
+    return all_symbols
+
+
+async def call_hierarchy(
+    path: str, line: int, column: int, direction: Literal["incoming", "outgoing"]
+) -> list:
+    """
+    Get call hierarchy for a symbol at the given position.
+    
+    Args:
+        path: File path
+        line: 1-based line number
+        column: 1-based column number
+        direction: "incoming" for callers, "outgoing" for callees
+    
+    Returns:
+        List of call hierarchy items with call info
+    """
+    abs_path = _resolve_path(path)
+    clients = _get_clients_for_file(abs_path)
+    
+    if not clients:
+        return []
+    
+    all_calls = []
+    for client in clients:
+        items = await client.prepare_call_hierarchy(abs_path, line, column)
+        for item in items:
+            if direction == "incoming":
+                calls = await client.incoming_calls(item)
+            else:
+                calls = await client.outgoing_calls(item)
+            all_calls.extend(calls)
+    
+    return all_calls
 
 
 def status() -> dict[str, dict]:
@@ -170,13 +385,31 @@ async def shutdown() -> None:
 
 
 __all__ = [
+    # Initialization and lifecycle
     "init",
-    "diagnostics",
-    "touch_file",
-    "status",
     "shutdown",
+    "status",
+    # File operations
+    "touch_file",
+    "diagnostics",
+    # Code intelligence
+    "goto_definition",
+    "find_references",
+    "hover",
+    "document_symbols",
+    "workspace_symbols",
+    "call_hierarchy",
+    # Types
     "Diagnostic",
+    "Range",
+    "Location",
+    "Symbol",
+    "Hover",
+    "CallHierarchyItem",
+    # Client and configuration
     "LSPClient",
     "SERVERS",
+    "ServerConfig",
     "get_server_for_file",
+    "get_servers_for_file",
 ]

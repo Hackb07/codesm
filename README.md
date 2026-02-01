@@ -262,7 +262,7 @@ codesm supports two agent modes for different task types:
 - [x] Agent loop with tool execution
 - [x] Command palette (`Ctrl+P` or `/`)
 - [x] Sidebar with session list
-- [x] **Tools**: Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Diagnostics, CodeSearch, Todo, Ls, Batch, ParallelTasks, Orchestrate, Pipeline
+- [x] **Tools**: Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Diagnostics, LSP, CodeSearch, Todo, Ls, Batch, ParallelTasks, Orchestrate, Pipeline
 
 ### To Be Implemented
 

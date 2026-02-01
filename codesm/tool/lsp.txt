@@ -1,0 +1,134 @@
+Language Server Protocol features for code intelligence.
+
+This tool provides LSP-powered code navigation and analysis: go-to-definition, find references, hover information, symbol search, and call hierarchy.
+
+# Actions
+
+## definition
+Go to the definition of a symbol at a given position.
+- path: Absolute file path (required)
+- line: 1-based line number (required)
+- column: 1-based column number (required)
+
+<example>
+Find where a function is defined
+[lsp action="definition" path="/home/user/project/src/main.py" line="42" column="15"]
+</example>
+
+## references
+Find all references to a symbol at a given position.
+- path: Absolute file path (required)
+- line: 1-based line number (required)
+- column: 1-based column number (required)
+- include_declaration: Include the declaration itself (default: true)
+
+<example>
+Find all usages of a function
+[lsp action="references" path="/home/user/project/src/utils.py" line="10" column="5"]
+</example>
+
+<example>
+Find references excluding the declaration
+[lsp action="references" path="/home/user/project/src/utils.py" line="10" column="5" include_declaration="false"]
+</example>
+
+## hover
+Get hover information (type, documentation) for a symbol.
+- path: Absolute file path (required)
+- line: 1-based line number (required)
+- column: 1-based column number (required)
+
+<example>
+Get type information for a variable
+[lsp action="hover" path="/home/user/project/src/api.py" line="25" column="10"]
+</example>
+
+## document_symbols
+List all symbols (functions, classes, variables) in a file.
+- path: Absolute file path (required)
+
+<example>
+Get all symbols in a file
+[lsp action="document_symbols" path="/home/user/project/src/models.py"]
+</example>
+
+## workspace_symbols
+Search for symbols across the entire workspace.
+- query: Search query string (required)
+
+<example>
+Find all symbols containing "User"
+[lsp action="workspace_symbols" query="User"]
+</example>
+
+<example>
+Find a specific class
+[lsp action="workspace_symbols" query="AuthenticationService"]
+</example>
+
+## call_hierarchy_incoming
+Find all callers of a function/method.
+- path: Absolute file path (required)
+- line: 1-based line number (required)
+- column: 1-based column number (required)
+
+<example>
+Find who calls this function
+[lsp action="call_hierarchy_incoming" path="/home/user/project/src/auth.py" line="50" column="5"]
+</example>
+
+## call_hierarchy_outgoing
+Find all functions/methods called by a function.
+- path: Absolute file path (required)
+- line: 1-based line number (required)
+- column: 1-based column number (required)
+
+<example>
+Find what this function calls
+[lsp action="call_hierarchy_outgoing" path="/home/user/project/src/handler.py" line="30" column="5"]
+</example>
+
+# When to Use LSP
+
+Use this tool when you need:
+- **Precise navigation**: Jump to definitions instead of searching
+- **Impact analysis**: Find all references before refactoring
+- **Type information**: Understand variable types and function signatures
+- **Code structure**: List symbols in a file or search the workspace
+- **Call graphs**: Understand call relationships between functions
+
+# Output Format
+
+All results include clickable file links that open in your editor:
+- [filename.py](file:///path/to/file#L10) - links to specific lines
+- Symbol kind (Function, Class, Method, etc.)
+- Container information for nested symbols
+
+# Best Practices
+
+1. **Use with column position**: Place cursor on the symbol name, not just the line
+2. **Combine with read**: After finding definition, read the file to see context
+3. **References before refactoring**: Check all usages before renaming
+4. **Document symbols for overview**: Get file structure before diving into details
+5. **Call hierarchy for understanding**: Trace call flows in unfamiliar code
+
+# Supported Languages
+
+Works with any language that has an LSP server configured:
+- Python (pyright, pylsp)
+- TypeScript/JavaScript (typescript-language-server)
+- Rust (rust-analyzer)
+- Go (gopls)
+- And more...
+
+# Comparison with Other Tools
+
+| Need | Tool to Use |
+|------|-------------|
+| Find exact text | grep |
+| Find definition | lsp (definition) |
+| Find all usages | lsp (references) |
+| Get type info | lsp (hover) |
+| Search by name | lsp (workspace_symbols) |
+| Find files | glob |
+| Check errors | diagnostics |
