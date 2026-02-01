@@ -1,11 +1,16 @@
 """ReAct loop implementation for agent execution"""
 
+import logging
 from typing import AsyncIterator
 from dataclasses import dataclass
 import json
 
 from codesm.provider.base import StreamChunk
 from codesm.tool.registry import ToolRegistry
+from codesm.session.context import ContextManager
+from codesm.session.summarize import summarize_messages
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -28,8 +33,27 @@ class ReActLoop:
         current_messages = list(messages)  # Copy to avoid mutating original
         session = context.get("session")
         
+        # Get or create ContextManager for compaction
+        context_manager = context.get("context_manager")
+        if context_manager is None:
+            context_manager = ContextManager()
+        
         while self.max_iterations == 0 or iteration < self.max_iterations:
             iteration += 1
+            
+            # Compact context if needed
+            if context_manager.should_compact(current_messages):
+                tokens_before = context_manager.estimate_tokens(current_messages)
+                
+                async def summarizer(msgs):
+                    return await summarize_messages(msgs)
+                
+                current_messages = await context_manager.compact_messages_async(
+                    current_messages,
+                    summarizer=summarizer,
+                )
+                tokens_after = context_manager.estimate_tokens(current_messages)
+                logger.info(f"Compacted context from {tokens_before} to {tokens_after} tokens")
             
             # Get response from LLM
             response_text = ""
